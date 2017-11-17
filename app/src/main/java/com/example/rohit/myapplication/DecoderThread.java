@@ -35,7 +35,7 @@ public class DecoderThread implements Runnable {
     public DecoderThread(){
         frame_count = 0;
         mediaExtractor = new MediaExtractor();
-        filepath = Environment.getExternalStorageDirectory().getPath() + "/Hike" + "/sample10.mp4";
+        filepath = Environment.getExternalStorageDirectory().getPath() + "/Hike" + "/sample7.mp4";
 
         try {
             mediaExtractor.setDataSource(filepath);
@@ -81,19 +81,17 @@ public class DecoderThread implements Runnable {
                 if (decoderInputIndex >= 0) {
                     inputBuffer = decodeinputBuffers[decoderInputIndex];
                     int sampleData = mediaExtractor.readSampleData(inputBuffer, 0);
+                    flag = mediaExtractor.getSampleFlags();
+                    presentationTime = mediaExtractor.getSampleTime();
 
                     if(sampleData < 0) {
                         inputExtracted = true;
                         Log.d("DecodeActivity", "stopextractinginput");
-                        mediaCodecDecoder.queueInputBuffer(decoderInputIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM);
+                        mediaCodecDecoder.queueInputBuffer(decoderInputIndex, 0, 0,duration, MediaCodec.BUFFER_FLAG_END_OF_STREAM);
+                        Log.d("SAMPLETIME","LAST"+flag + " "+presentationTime);
                     }
                     else{
                         frame_count++;
-
-                        flag = mediaExtractor.getSampleFlags();
-                        presentationTime = mediaExtractor.getSampleTime();
-
-
                         mediaCodecDecoder.queueInputBuffer(decoderInputIndex, 0, sampleData,presentationTime , flag);
 
                         Log.d("encodedBufferInfosize","********************"+sampleData);
@@ -102,7 +100,7 @@ public class DecoderThread implements Runnable {
 
                         Log.d("SAMPLETIME",""+frame_count +" "+flag+" "+presentationTime);
 
-                        mediaExtractor.advance();
+                        mediaExtractor.advance();//4951133
                     }
                 }
             }

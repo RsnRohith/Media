@@ -88,31 +88,21 @@ public class EncoderThread implements Runnable {
                     if(MainActivity.bufferInfo.size()>1){
                         decoderIndex = MainActivity.decoderOutputBufferIndex.get(1-MainActivity.consumingIndex);
                         decodedBufferInfo = MainActivity.bufferInfo.get(1-MainActivity.consumingIndex);
+
+                        if((decodedBufferInfo.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) == 0 ) {
+                            decodedBufferInfo.presentationTimeUs = Math.abs(MainActivity.duration-decodedBufferInfo.presentationTimeUs);
+                            decodedBufferInfo.flags = 1-MainActivity.consumingIndex;
+                        }else{
+                            decoderIndex = MainActivity.decoderOutputBufferIndex.get(1-MainActivity.consumingIndex);
+                            decodedBufferInfo = MainActivity.bufferInfo.get(1-MainActivity.consumingIndex);
+                            decodedBufferInfo.presentationTimeUs = MainActivity.duration+47311;
+                        }
                     }
                     else{
                         decoderIndex = MainActivity.decoderOutputBufferIndex.get(0);
-                        decodedBufferInfo = MainActivity.bufferInfo.get(0);
+                        decodedBufferInfo = MainActivity.bufferInfo.get(0);//4951133
+                        decodedBufferInfo.presentationTimeUs = MainActivity.duration+47311;
                     }
-
-
-
-                    if((decodedBufferInfo.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) == 0 ) {
-                        decodedBufferInfo.presentationTimeUs = Math.abs(MainActivity.duration-decodedBufferInfo.presentationTimeUs);
-
-                        decodedBufferInfo.flags = (MainActivity.consumingIndex == (MainActivity.bufferInfo.size()-1))?1:0;
-
-
-                        if(((MainActivity.consumingIndex + 1) == (MainActivity.bufferInfo.size() - 1)) && ((MainActivity.bufferInfo.get(MainActivity.consumingIndex + 1)).flags & (MediaCodec.BUFFER_FLAG_END_OF_STREAM))!=0){
-                            decodedBufferInfo.flags = 1;
-                        }
-                        else{
-                            decodedBufferInfo.flags = (MainActivity.consumingIndex == (MainActivity.bufferInfo.size()-1))?1:0;
-                        }
-
-                    }
-
-
-
 
                     Log.d("EncoderActivity", "" + MainActivity.decoderOutputBufferIndex.size());
                     Log.d("EncoderActivity", "" + MainActivity.bufferInfo.size());
@@ -122,9 +112,11 @@ public class EncoderThread implements Runnable {
 
                     inputBuffer.clear();
                     inputBuffer.put(MainActivity.deocodeoutputBuffers[decoderIndex]);
+//                    ByteBuffer byteBuffer = ByteBuffer.allocate(MainActivity.deocodeoutputBuffers[decoderIndex].remaining());
+//                    byteBuffer.put(MainActivity.deocodeoutputBuffers[decoderIndex]);
+//                    inputBuffer.put(byteBuffer);
 
                     decoder.releaseOutputBuffer(decoderIndex, false);
-
 
                     if(MainActivity.consumingIndex == 0){
                         //Log.d("Decoderrrrrr","Encoderrrrr"+MainActivity.bufferInfo.get(0).presentationTimeUs+"   "+MainActivity.bufferInfo.get(1).presentationTimeUs);
@@ -184,12 +176,12 @@ public class EncoderThread implements Runnable {
         }
 
         int flip = 1;
-        for(int i=final_array.size()-1;i>=0;i--){
+        for(int i=final_array.size()-1;i>0;i--){
             final_info.get(i).flags = flip;
             flip = 1- flip;
         }
 
-        final_info.get(0).presentationTimeUs = MainActivity.duration+150000;
+       final_info.get(0).presentationTimeUs = MainActivity.duration+50000;
 
         for(int i=final_array.size()-1;i>=0;i--){
             MainActivity.muxer.writeSampleData(track_index,final_array.get(i),final_info.get(i));
@@ -294,3 +286,18 @@ public class EncoderThread implements Runnable {
 
 
 }
+
+
+//   4951133
+
+
+/*
+4920244
+
+4878566
+
+4836933
+
+
+
+ */
