@@ -32,7 +32,7 @@ public class DecoderThread implements Runnable {
 
 
 
-    public DecoderThread(){
+    DecoderThread(){
         frame_count = 0;
         mediaExtractor = new MediaExtractor();
         filepath = Environment.getExternalStorageDirectory().getPath() + "/Hike" + "/sample7.mp4";
@@ -87,7 +87,7 @@ public class DecoderThread implements Runnable {
                     if(sampleData < 0) {
                         inputExtracted = true;
                         Log.d("DecodeActivity", "stopextractinginput");
-                        mediaCodecDecoder.queueInputBuffer(decoderInputIndex, 0, 0,duration, MediaCodec.BUFFER_FLAG_END_OF_STREAM);
+                        mediaCodecDecoder.queueInputBuffer(decoderInputIndex, 0, 0,duration+50000, MediaCodec.BUFFER_FLAG_END_OF_STREAM);
                         Log.d("SAMPLETIME","LAST"+flag + " "+presentationTime);
                     }
                     else{
@@ -108,6 +108,7 @@ public class DecoderThread implements Runnable {
             if(!MainActivity.isQueueEmptying){
                 int decodeOutputIndex = mediaCodecDecoder.dequeueOutputBuffer(decodedBufferInfo, 10000);
 
+                Log.d("decoderOutput","decoderOutput"+ decodeOutputIndex);
                 switch (decodeOutputIndex) {
                     case MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED:
                         Log.d("DecodeActivity", "INFO_OUTPUT_BUFFERS_CHANGED");

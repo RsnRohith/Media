@@ -95,13 +95,13 @@ public class EncoderThread implements Runnable {
                         }else{
                             decoderIndex = MainActivity.decoderOutputBufferIndex.get(1-MainActivity.consumingIndex);
                             decodedBufferInfo = MainActivity.bufferInfo.get(1-MainActivity.consumingIndex);
-                            decodedBufferInfo.presentationTimeUs = MainActivity.duration+47311;
+                            //decodedBufferInfo.presentationTimeUs = MainActivity.duration+47311;
                         }
                     }
                     else{
                         decoderIndex = MainActivity.decoderOutputBufferIndex.get(0);
                         decodedBufferInfo = MainActivity.bufferInfo.get(0);//4951133
-                        decodedBufferInfo.presentationTimeUs = MainActivity.duration+47311;
+                        //decodedBufferInfo.presentationTimeUs = MainActivity.duration+47311;
                     }
 
                     Log.d("EncoderActivity", "" + MainActivity.decoderOutputBufferIndex.size());
@@ -175,13 +175,13 @@ public class EncoderThread implements Runnable {
 
         }
 
-        int flip = 1;
-        for(int i=final_array.size()-1;i>0;i--){
-            final_info.get(i).flags = flip;
-            flip = 1- flip;
-        }
+//        int flip = 1;
+//        for(int i=final_array.size()-1;i>=0;i--){
+//            final_info.get(i).flags = flip;
+//            flip = 1- flip;
+//        }
 
-       final_info.get(0).presentationTimeUs = MainActivity.duration+50000;
+       //final_info.get(0).presentationTimeUs = MainActivity.duration+50000;
 
         for(int i=final_array.size()-1;i>=0;i--){
             MainActivity.muxer.writeSampleData(track_index,final_array.get(i),final_info.get(i));
