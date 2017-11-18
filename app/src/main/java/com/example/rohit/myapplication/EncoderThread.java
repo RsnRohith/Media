@@ -71,67 +71,25 @@ public class EncoderThread implements Runnable {
 
             if(MainActivity.isQueueEmptying){
 
-
                 encoderInputIndex = mediaCodecEncoder.dequeueInputBuffer(10000);
 
-                if ((encoderInputIndex >= 0) && (MainActivity.decoderOutputBufferIndex.size() != 0) && (MainActivity.bufferInfo.size() != 0)) {
-
-                    Log.d("EncoderActivity", "" + MainActivity.decoderOutputBufferIndex.size());
-                    Log.d("EncoderActivity", "" + MainActivity.bufferInfo.size());
-
-                    MainActivity.consumingIndex--;
-
-                    int decoderIndex ;
-                    MediaCodec.BufferInfo decodedBufferInfo;
-
-
-                    if(MainActivity.bufferInfo.size()>1){
-                        decoderIndex = MainActivity.decoderOutputBufferIndex.get(1-MainActivity.consumingIndex);
-                        decodedBufferInfo = MainActivity.bufferInfo.get(1-MainActivity.consumingIndex);
-
-                        if((decodedBufferInfo.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) == 0 ) {
-                            decodedBufferInfo.presentationTimeUs = Math.abs(MainActivity.duration-decodedBufferInfo.presentationTimeUs);
-                            decodedBufferInfo.flags = 1-MainActivity.consumingIndex;
-                        }else{
-                            decoderIndex = MainActivity.decoderOutputBufferIndex.get(1-MainActivity.consumingIndex);
-                            decodedBufferInfo = MainActivity.bufferInfo.get(1-MainActivity.consumingIndex);
-                            //decodedBufferInfo.presentationTimeUs = MainActivity.duration+47311;
-                        }
-                    }
-                    else{
-                        decoderIndex = MainActivity.decoderOutputBufferIndex.get(0);
-                        decodedBufferInfo = MainActivity.bufferInfo.get(0);//4951133
-                        //decodedBufferInfo.presentationTimeUs = MainActivity.duration+47311;
-                    }
-
-                    Log.d("EncoderActivity", "" + MainActivity.decoderOutputBufferIndex.size());
-                    Log.d("EncoderActivity", "" + MainActivity.bufferInfo.size());
-
+                if ((encoderInputIndex >= 0) && (MainActivity.buffer_info_temp.size() > 0)) {
 
                     ByteBuffer inputBuffer = encodeoinputBuffers[encoderInputIndex];
-
                     inputBuffer.clear();
-                    inputBuffer.put(MainActivity.deocodeoutputBuffers[decoderIndex]);
-//                    ByteBuffer byteBuffer = ByteBuffer.allocate(MainActivity.deocodeoutputBuffers[decoderIndex].remaining());
-//                    byteBuffer.put(MainActivity.deocodeoutputBuffers[decoderIndex]);
-//                    inputBuffer.put(byteBuffer);
+                    ByteBufferMeta byteBufferMeta = MainActivity.buffer_info_temp.get(MainActivity.consumingIndex);
 
-                    decoder.releaseOutputBuffer(decoderIndex, false);
+                    inputBuffer.put(byteBufferMeta.getByteBuffer());
+                    mediaCodecEncoder.queueInputBuffer(encoderInputIndex, 0, byteBufferMeta.getBufferinfo().size,byteBufferMeta.getBufferinfo().presentationTimeUs, byteBufferMeta.getBufferinfo().flags);
 
-                    if(MainActivity.consumingIndex == 0){
-                        //Log.d("Decoderrrrrr","Encoderrrrr"+MainActivity.bufferInfo.get(0).presentationTimeUs+"   "+MainActivity.bufferInfo.get(1).presentationTimeUs);
-                        //Log.d("Decoderrrrrr",""+MainActivity.bufferInfo.get(0).flags+"   "+MainActivity.bufferInfo.get(1).flags);
+                    MainActivity.consumingIndex++;
 
+                    if(MainActivity.consumingIndex == MainActivity.buffer_info_temp.size()){
+                        MainActivity.buffer_info_temp.clear();
+                        MainActivity.consumingIndex = 0;
                         MainActivity.isQueueEmptying = false;
-                        MainActivity.decoderOutputBufferIndex.clear();
-                        MainActivity.bufferInfo.clear();
                     }
-
-
-                    mediaCodecEncoder.queueInputBuffer(encoderInputIndex, 0, decodedBufferInfo.size,decodedBufferInfo.presentationTimeUs, decodedBufferInfo.flags);
-                    //decodedFrameBuffer = null;
                 }
-
             }
 
             MediaCodec.BufferInfo encodedBufferInfo = new MediaCodec.BufferInfo();
@@ -154,19 +112,12 @@ public class EncoderThread implements Runnable {
                         endOfEncoding = true;
                     }
                     if (encodedBufferInfo.size != 0) {
-                        Log.d("Decoderrrrrr.....", "" + encodedBufferInfo.presentationTimeUs);
-                        Log.d("Decoderrrrrr.....", "" + encodedBufferInfo.flags);
-                        ByteBuffer temp = encodeoutputBuffers[encoderOutputIndex];
-                        ByteBuffer byteBuffer = ByteBuffer.allocate(temp.remaining());
-                        byteBuffer.put(temp);
-                        final_array.add(temp);
-                        MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
-                        bufferInfo.presentationTimeUs = encodedBufferInfo.presentationTimeUs;
-                        bufferInfo.flags = encodedBufferInfo.flags;
-                        bufferInfo.size = encodedBufferInfo.size;
-                        bufferInfo.offset = encodedBufferInfo.offset;
-                        final_info.add(bufferInfo);
-                        //MainActivity.muxer.writeSampleData(track_index, temp, encodedBufferInfo);
+
+                        ByteBuffer temp = ByteBuffer.allocate(encodeoutputBuffers[encoderOutputIndex].remaining());
+                        temp.put(encodeoutputBuffers[encoderOutputIndex]);
+
+
+                        MainActivity.final_buffer_info.add(new ByteBufferMeta(encodedBufferInfo,temp));
                         mediaCodecEncoder.releaseOutputBuffer(encoderOutputIndex, false);
                     }
                     break;
@@ -175,19 +126,51 @@ public class EncoderThread implements Runnable {
 
         }
 
-//        int flip = 1;
-//        for(int i=final_array.size()-1;i>=0;i--){
-//            final_info.get(i).flags = flip;
-//            flip = 1- flip;
-//        }
+        // final array processing
 
-       //final_info.get(0).presentationTimeUs = MainActivity.duration+50000;
+        processfinalArray();
 
-        for(int i=final_array.size()-1;i>=0;i--){
-            MainActivity.muxer.writeSampleData(track_index,final_array.get(i),final_info.get(i));
-        }
 
         stopEncoder();
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
+    private void processfinalArray() {
+
+        MainActivity.final_buffer_info.remove(MainActivity.final_buffer_info.size()-1);
+
+        int size = MainActivity.final_buffer_info.size();
+
+        int index_to_start = size - (size % MainActivity.KEY_FRAME_RATE);
+
+        if(index_to_start == size){
+            index_to_start = size - MainActivity.KEY_FRAME_RATE;
+        }
+
+        int presentationTime_index = 1;
+
+        for( ;index_to_start >= 0; index_to_start = index_to_start - MainActivity.KEY_FRAME_RATE ){
+
+            for(int i=index_to_start;(i<index_to_start+MainActivity.KEY_FRAME_RATE) && (i<size);i++){
+
+                // final case
+
+                ByteBufferMeta byteBufferMeta = MainActivity.final_buffer_info.get(i);
+                MediaCodec.BufferInfo info = byteBufferMeta.getBufferinfo();
+                info.presentationTimeUs = MainActivity.timeStamp.get(presentationTime_index);
+                presentationTime_index++;
+
+                MainActivity.muxer.writeSampleData(track_index,byteBufferMeta.getByteBuffer(),info);
+            }
+        }
+        MediaCodec.BufferInfo bufferInfo= new MediaCodec.BufferInfo();
+
+
+
+        bufferInfo.set(0,0,MainActivity.duration,MediaCodec.BUFFER_FLAG_END_OF_STREAM);
+        ByteBuffer byteBuffer = ByteBuffer.allocate(5);
+
+        MainActivity.muxer.writeSampleData(track_index,byteBuffer,bufferInfo);
     }
 
     ArrayList<ByteBuffer> final_array = new ArrayList<>();
@@ -203,7 +186,7 @@ public class EncoderThread implements Runnable {
             mediFormat = MediaFormat.createVideoFormat("video/avc",  mediaFormat.getInteger(MediaFormat.KEY_WIDTH),mediaFormat.getInteger(MediaFormat.KEY_HEIGHT));
             mediFormat.setInteger(MediaFormat.KEY_BIT_RATE, 2000000);
             mediFormat.setInteger(MediaFormat.KEY_FRAME_RATE, 30);
-            mediFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 2);
+            mediFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, MainActivity.KEY_FRAME_RATE);
 
             MediaCodecInfo info = selectCodec("video/avc");
 

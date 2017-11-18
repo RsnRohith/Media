@@ -10,6 +10,7 @@ import android.support.v7.app.AppCompatActivity;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedList;
 
 public class MainActivity extends AppCompatActivity {
@@ -20,13 +21,14 @@ public class MainActivity extends AppCompatActivity {
 
     static int consumingIndex = 0;
     static boolean isQueueEmptying = false;
-    static ByteBuffer[] deocodeoutputBuffers;
-    static ArrayList<MediaCodec.BufferInfo> bufferInfo = new ArrayList<>();
-    static ArrayList<Integer> decoderOutputBufferIndex = new ArrayList<>();
     static MediaMuxer muxer;
     static long duration;
 
-
+    static int KEY_FRAME_RATE = 2;
+    static ArrayList<ByteBufferMeta> final_buffer_info = new ArrayList<>();
+    static ArrayList<ByteBufferMeta> buffer_info_temp = new ArrayList();
+    static int total_frames;
+    static HashMap<Integer,Long> timeStamp = new HashMap<>();
 
     @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
     @Override
@@ -37,11 +39,10 @@ public class MainActivity extends AppCompatActivity {
         decoderThread = new DecoderThread();
 
 
+        encoderThread = new EncoderThread(decoderThread.getDecoderMediaCodec(), this);
 
-        encoderThread = new EncoderThread(decoderThread.getDecoderMediaCodec(),this);
 
-
-        encoderThread.setInitialData(decoderThread.getVideo_track_index(),decoderThread.getMediaFormat(),decoderThread.getMime());
+        encoderThread.setInitialData(decoderThread.getVideo_track_index(), decoderThread.getMediaFormat(), decoderThread.getMime());
 
         Thread decoder = new Thread(decoderThread);
         decoder.start();
@@ -50,15 +51,5 @@ public class MainActivity extends AppCompatActivity {
         encoder.start();
 
     }
-
-
-    @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
-    void stopMuxer(){
-
-    }
-
-
-
-
 
 }
