@@ -33,7 +33,7 @@ public class DecoderThread implements Runnable {
     DecoderThread() {
         frame_count = 0;
         mediaExtractor = new MediaExtractor();
-        filepath = Environment.getExternalStorageDirectory().getPath() + "/Hike" + "/sample11.mp4";
+        filepath = Environment.getExternalStorageDirectory().getPath() + "/Hike" + "/sample12.mp4";
 
         try {
             mediaExtractor.setDataSource(filepath);
@@ -81,7 +81,7 @@ public class DecoderThread implements Runnable {
                     frame_count++;
                     flag = mediaExtractor.getSampleFlags();
                     presentationTime = mediaExtractor.getSampleTime();
-                    MainActivity.timeStamp.put(frame_count,presentationTime);
+                    MainActivity.timeStamp.put(frame_count, presentationTime);
 
                     if (sampleData < 0) {
                         inputExtracted = true;
@@ -93,8 +93,6 @@ public class DecoderThread implements Runnable {
 
                         Log.d("encodedBufferInfosize", "********************" + sampleData);
                         Log.d("DecodeActivity", "extractinginput");
-
-
                         Log.d("SAMPLETIME", "" + frame_count + " " + flag + " " + presentationTime);
 
                         mediaExtractor.advance();//4951133
@@ -102,23 +100,22 @@ public class DecoderThread implements Runnable {
                 }
             }
 
-            if (!MainActivity.isQueueEmptying) {
-                int decodeOutputIndex = mediaCodecDecoder.dequeueOutputBuffer(decodedBufferInfo, 10000);
+            int decodeOutputIndex = mediaCodecDecoder.dequeueOutputBuffer(decodedBufferInfo, 10000);
 
-                Log.d("decoderOutput", "decoderOutput" + decodeOutputIndex);
-                switch (decodeOutputIndex) {
-                    case MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED:
-                        Log.d("DecodeActivity", "INFO_OUTPUT_BUFFERS_CHANGED");
-                        //MainActivity.deocodeoutputBuffers = mediaCodecDecoder.getOutputBuffers();
-                        break;
-                    case MediaCodec.INFO_OUTPUT_FORMAT_CHANGED:
-                        Log.d("DecodeActivity", "New format " + mediaCodecDecoder.getOutputFormat());
-                        break;
-                    case MediaCodec.INFO_TRY_AGAIN_LATER:
-                        Log.d("DecodeActivity", "dequeueOutputBuffer timed out!");
-                        break;
-                    default:
-
+            Log.d("decoderOutput", "decoderOutput" + decodeOutputIndex);
+            switch (decodeOutputIndex) {
+                case MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED:
+                    Log.d("DecodeActivity", "INFO_OUTPUT_BUFFERS_CHANGED");
+                    //MainActivity.deocodeoutputBuffers = mediaCodecDecoder.getOutputBuffers();
+                    break;
+                case MediaCodec.INFO_OUTPUT_FORMAT_CHANGED:
+                    Log.d("DecodeActivity", "New format " + mediaCodecDecoder.getOutputFormat());
+                    break;
+                case MediaCodec.INFO_TRY_AGAIN_LATER:
+                    Log.d("DecodeActivity", "dequeueOutputBuffer timed out!");
+                    break;
+                default:
+/*
                         ByteBuffer byteBuffers = decodeoutputBuffers[decodeOutputIndex];
                         byteBuffers.position(decodedBufferInfo.offset);
                         byteBuffers.limit(decodedBufferInfo.offset+decodedBufferInfo.size);
@@ -149,16 +146,46 @@ public class DecoderThread implements Runnable {
                             reverse(endOfDecoding);
                             MainActivity.isQueueEmptying = true;
                         }
-                        break;
-                }
+
+
+                        */
+
+                    ByteBuffer byteBuffers = decodeoutputBuffers[decodeOutputIndex];
+                    byteBuffers.position(decodedBufferInfo.offset);
+                    byteBuffers.limit(decodedBufferInfo.offset + decodedBufferInfo.size);
+
+                    byte[] temp = new byte[byteBuffers.remaining()];
+                    byteBuffers.get(temp);
+
+                    ByteBuffer last = ByteBuffer.wrap(temp);
+                    last.position(decodedBufferInfo.offset);
+                    last.limit(decodedBufferInfo.offset + decodedBufferInfo.size);
+
+                    MediaCodec.BufferInfo info = new MediaCodec.BufferInfo();
+                    info.set(decodedBufferInfo.offset, decodedBufferInfo.size, decodedBufferInfo.presentationTimeUs, decodedBufferInfo.flags);
+
+                    MainActivity.decoded_buffer_info.add(new ByteBufferMeta(info, last));
+                    mediaCodecDecoder.releaseOutputBuffer(decodeOutputIndex, false);
+
+                    if ((decodedBufferInfo.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
+                        endOfDecoding = true;
+                    }
+
+                    break;
             }
+
         }
 
         MainActivity.total_frames = frame_count;
 
-
         mediaExtractor.release();
 
+        ByteBufferMeta last = MainActivity.decoded_buffer_info.get(MainActivity.decoded_buffer_info.size()-1);
+        MainActivity.decoded_buffer_info.remove(MainActivity.decoded_buffer_info.size()-1);
+
+        reverse();
+
+        MainActivity.decoded_buffer_info.add(last);
 
         Log.d("Result ", "duration " + duration);
         Log.d("Result ", "no. of frames " + frame_count);
@@ -167,25 +194,20 @@ public class DecoderThread implements Runnable {
 
         Log.d("SAMPLETIME", "" + duration);
 
+        Thread encoder = new Thread(encoderThread);
+        encoder.start();
+
     }
 
-    private void reverse(boolean endOfDecoding) {
+    private void reverse() {
 
-        int size;
+        int size = (MainActivity.decoded_buffer_info.size());
+        ;
 
-
-        if(endOfDecoding){
-            size = (MainActivity.buffer_info_temp.size()-1) / 2;
-        }
-        else{
-            size = MainActivity.buffer_info_temp.size() / 2;
-        }
-
-
-        for (int i = 0; i < size; i++) {
-            ByteBuffer tempBuffer = MainActivity.buffer_info_temp.get(i).getByteBuffer();
-            MainActivity.buffer_info_temp.get(i).setByteBuffer(MainActivity.buffer_info_temp.get(size-i-1).getByteBuffer());
-            MainActivity.buffer_info_temp.get(size-i-1).setByteBuffer(tempBuffer);
+        for (int i = 0; i < size/2; i++) {
+            ByteBuffer tempBuffer = MainActivity.decoded_buffer_info.get(i).getByteBuffer();
+            MainActivity.decoded_buffer_info.get(i).setByteBuffer(MainActivity.decoded_buffer_info.get(size - i - 1).getByteBuffer());
+            MainActivity.decoded_buffer_info.get(size - i - 1).setByteBuffer(tempBuffer);
         }
     }
 
@@ -248,6 +270,12 @@ public class DecoderThread implements Runnable {
     MediaCodec getDecoderMediaCodec() {
         return mediaCodecDecoder;
     }
+
+
+    public void setEncoderThread(EncoderThread encoderThread) {
+        this.encoderThread = encoderThread;
+    }
+
 
 
 }

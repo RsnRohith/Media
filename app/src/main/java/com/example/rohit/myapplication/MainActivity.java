@@ -19,14 +19,12 @@ public class MainActivity extends AppCompatActivity {
     DecoderThread decoderThread;
     EncoderThread encoderThread;
 
-    static int consumingIndex = 0;
-    static boolean isQueueEmptying = false;
+
     static MediaMuxer muxer;
     static long duration;
 
-    static int KEY_FRAME_RATE = 2;
-    static ArrayList<ByteBufferMeta> final_buffer_info = new ArrayList<>();
-    static ArrayList<ByteBufferMeta> buffer_info_temp = new ArrayList();
+    static int KEY_FRAME_RATE = 10;
+    static ArrayList<ByteBufferMeta> decoded_buffer_info = new ArrayList();
     static int total_frames;
     static HashMap<Integer,Long> timeStamp = new HashMap<>();
 
@@ -44,11 +42,10 @@ public class MainActivity extends AppCompatActivity {
 
         encoderThread.setInitialData(decoderThread.getVideo_track_index(), decoderThread.getMediaFormat(), decoderThread.getMime());
 
+        decoderThread.setEncoderThread(encoderThread);
+
         Thread decoder = new Thread(decoderThread);
         decoder.start();
-
-        Thread encoder = new Thread(encoderThread);
-        encoder.start();
 
     }
 

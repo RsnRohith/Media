@@ -67,28 +67,25 @@ public class EncoderThread implements Runnable {
 
 
 
+        int decodedDataIndex = 0;
+
         while (!endOfEncoding) {
 
-            if(MainActivity.isQueueEmptying){
+
+            if(decodedDataIndex < MainActivity.decoded_buffer_info.size()) {
 
                 encoderInputIndex = mediaCodecEncoder.dequeueInputBuffer(10000);
 
-                if ((encoderInputIndex >= 0) && (MainActivity.buffer_info_temp.size() > 0)) {
+                if (encoderInputIndex >= 0) {
 
                     ByteBuffer inputBuffer = encodeoinputBuffers[encoderInputIndex];
                     inputBuffer.clear();
-                    ByteBufferMeta byteBufferMeta = MainActivity.buffer_info_temp.get(MainActivity.consumingIndex);
+                    ByteBufferMeta byteBufferMeta = MainActivity.decoded_buffer_info.get(decodedDataIndex);
 
                     inputBuffer.put(byteBufferMeta.getByteBuffer());
-                    mediaCodecEncoder.queueInputBuffer(encoderInputIndex, 0, byteBufferMeta.getBufferinfo().size,byteBufferMeta.getBufferinfo().presentationTimeUs, byteBufferMeta.getBufferinfo().flags);
+                    mediaCodecEncoder.queueInputBuffer(encoderInputIndex, 0, byteBufferMeta.getBufferinfo().size, byteBufferMeta.getBufferinfo().presentationTimeUs, byteBufferMeta.getBufferinfo().flags);
 
-                    MainActivity.consumingIndex++;
-
-                    if(MainActivity.consumingIndex == MainActivity.buffer_info_temp.size()){
-                        MainActivity.buffer_info_temp.clear();
-                        MainActivity.consumingIndex = 0;
-                        MainActivity.isQueueEmptying = false;
-                    }
+                    decodedDataIndex++;
                 }
             }
 
@@ -108,16 +105,16 @@ public class EncoderThread implements Runnable {
                     Log.d("EncodeActivity", "dequeueOutputBuffer timed out!");
                     break;
                 default:
+                    if(MainActivity.muxer == null){
+                        track_index = MainActivity.muxer.addTrack(mediaCodecEncoder.getOutputFormat());
+                        MainActivity.muxer.start();
+                    }
                     if ((MediaCodec.BUFFER_FLAG_END_OF_STREAM & encodedBufferInfo.flags) != 0) {
                         endOfEncoding = true;
+                        break;
                     }
                     if (encodedBufferInfo.size != 0) {
-
-                        ByteBuffer temp = ByteBuffer.allocate(encodeoutputBuffers[encoderOutputIndex].remaining());
-                        temp.put(encodeoutputBuffers[encoderOutputIndex]);
-
-
-                        MainActivity.final_buffer_info.add(new ByteBufferMeta(encodedBufferInfo,temp));
+                        MainActivity.muxer.writeSampleData(track_index,encodeoutputBuffers[encoderOutputIndex],encodedBufferInfo);
                         mediaCodecEncoder.releaseOutputBuffer(encoderOutputIndex, false);
                     }
                     break;
@@ -125,56 +122,19 @@ public class EncoderThread implements Runnable {
 
 
         }
+        MediaCodec.BufferInfo final_frame_info= new MediaCodec.BufferInfo();
+        final_frame_info.presentationTimeUs = MainActivity.duration+50000;
 
-        // final array processing
 
-        processfinalArray();
+        MainActivity.muxer.writeSampleData(track_index,ByteBuffer.allocate(10),final_frame_info);
+
 
 
         stopEncoder();
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
-    private void processfinalArray() {
-
-        MainActivity.final_buffer_info.remove(MainActivity.final_buffer_info.size()-1);
-
-        int size = MainActivity.final_buffer_info.size();
-
-        int index_to_start = size - (size % MainActivity.KEY_FRAME_RATE);
-
-        if(index_to_start == size){
-            index_to_start = size - MainActivity.KEY_FRAME_RATE;
-        }
-
-        int presentationTime_index = 1;
-
-        for( ;index_to_start >= 0; index_to_start = index_to_start - MainActivity.KEY_FRAME_RATE ){
-
-            for(int i=index_to_start;(i<index_to_start+MainActivity.KEY_FRAME_RATE) && (i<size);i++){
-
-                // final case
-
-                ByteBufferMeta byteBufferMeta = MainActivity.final_buffer_info.get(i);
-                MediaCodec.BufferInfo info = byteBufferMeta.getBufferinfo();
-                info.presentationTimeUs = MainActivity.timeStamp.get(presentationTime_index);
-                presentationTime_index++;
-
-                MainActivity.muxer.writeSampleData(track_index,byteBufferMeta.getByteBuffer(),info);
-            }
-        }
-        MediaCodec.BufferInfo bufferInfo= new MediaCodec.BufferInfo();
 
 
-
-        bufferInfo.set(0,0,MainActivity.duration,MediaCodec.BUFFER_FLAG_END_OF_STREAM);
-        ByteBuffer byteBuffer = ByteBuffer.allocate(5);
-
-        MainActivity.muxer.writeSampleData(track_index,byteBuffer,bufferInfo);
-    }
-
-    ArrayList<ByteBuffer> final_array = new ArrayList<>();
-    ArrayList<MediaCodec.BufferInfo> final_info = new ArrayList<>();
 
     private MediaFormat mediFormat;
 
