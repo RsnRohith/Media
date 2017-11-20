@@ -18,6 +18,10 @@ public class ByteBufferMeta {
         this.bufferinfo = bufferInfo;
     }
 
+    public ByteBufferMeta(){
+
+    }
+
     public MediaCodec.BufferInfo getBufferinfo() {
         return bufferinfo;
     }

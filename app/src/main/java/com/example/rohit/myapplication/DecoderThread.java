@@ -33,7 +33,7 @@ public class DecoderThread implements Runnable {
     DecoderThread() {
         frame_count = 0;
         mediaExtractor = new MediaExtractor();
-        filepath = Environment.getExternalStorageDirectory().getPath() + "/Hike" + "/sample11.mp4";
+        filepath = Environment.getExternalStorageDirectory().getPath() + "/Hike" + "/sample13.mp4";
 
         try {
             mediaExtractor.setDataSource(filepath);
@@ -81,14 +81,16 @@ public class DecoderThread implements Runnable {
                     frame_count++;
                     flag = mediaExtractor.getSampleFlags();
                     presentationTime = mediaExtractor.getSampleTime();
-                    MainActivity.timeStamp.put(frame_count,presentationTime);
+
 
                     if (sampleData < 0) {
                         inputExtracted = true;
                         Log.d("DecodeActivity", "stopextractinginput");
-                        mediaCodecDecoder.queueInputBuffer(decoderInputIndex, 0, 0, duration + 50000, MediaCodec.BUFFER_FLAG_END_OF_STREAM);
+                        mediaCodecDecoder.queueInputBuffer(decoderInputIndex, 0, 0, duration+50000, MediaCodec.BUFFER_FLAG_END_OF_STREAM);
+                        MainActivity.timeStamp.put(frame_count,duration+50000);
                         Log.d("SAMPLETIME", "LAST" + flag + " " + presentationTime);
                     } else {
+                        MainActivity.timeStamp.put(frame_count,presentationTime);
                         mediaCodecDecoder.queueInputBuffer(decoderInputIndex, 0, sampleData, presentationTime, flag);
 
                         Log.d("encodedBufferInfosize", "********************" + sampleData);
@@ -175,17 +177,30 @@ public class DecoderThread implements Runnable {
 
 
         if(endOfDecoding){
-            size = (MainActivity.buffer_info_temp.size()-1) / 2;
+            size = (MainActivity.buffer_info_temp.size()-1);
         }
         else{
-            size = MainActivity.buffer_info_temp.size() / 2;
+            size = MainActivity.buffer_info_temp.size();
         }
 
 
-        for (int i = 0; i < size; i++) {
+        for (int i = 0; i < size/2; i++) {
             ByteBuffer tempBuffer = MainActivity.buffer_info_temp.get(i).getByteBuffer();
-            MainActivity.buffer_info_temp.get(i).setByteBuffer(MainActivity.buffer_info_temp.get(size-i-1).getByteBuffer());
+            ByteBuffer tempBuffer1 = MainActivity.buffer_info_temp.get(size-i-1).getByteBuffer();
+            MainActivity.buffer_info_temp.get(i).setByteBuffer(tempBuffer1);
             MainActivity.buffer_info_temp.get(size-i-1).setByteBuffer(tempBuffer);
+
+            MediaCodec.BufferInfo tempBuffer2 = MainActivity.buffer_info_temp.get(i).getBufferinfo();
+            MediaCodec.BufferInfo tempBuffer3 = MainActivity.buffer_info_temp.get(size-i-1).getBufferinfo();
+
+            int temp_size;
+            temp_size = tempBuffer2.size;
+            tempBuffer2.size = tempBuffer3.size;
+            tempBuffer3.size = temp_size;
+
+            MainActivity.buffer_info_temp.get(i).setBufferinfo(tempBuffer2);
+            MainActivity.buffer_info_temp.get(size-i-1).setBufferinfo(tempBuffer3);
+
         }
     }
 
