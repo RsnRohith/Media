@@ -33,7 +33,7 @@ public class DecoderThread implements Runnable {
     DecoderThread() {
         frame_count = 0;
         mediaExtractor = new MediaExtractor();
-        filepath = Environment.getExternalStorageDirectory().getPath() + "/Hike" + "/sample10.mp4";
+        filepath = Environment.getExternalStorageDirectory().getPath() + "/Hike" + "/sample7.mp4";
 
         try {
             mediaExtractor.setDataSource(filepath);

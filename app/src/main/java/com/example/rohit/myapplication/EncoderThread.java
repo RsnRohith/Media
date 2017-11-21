@@ -40,6 +40,7 @@ public class EncoderThread implements Runnable {
     int presentationTime = 0;
     int presentationTime_temp = 1;
     boolean once_done = false;
+    int frame_index = 0;
 
 
     // requires bytrebuffer and bufferinfo
@@ -99,7 +100,15 @@ public class EncoderThread implements Runnable {
                     if (!once_done) {
 
                         MainActivity.final_time_stamp.add(MainActivity.timeStamp.get(presentationTime_temp));
-                        mediaCodecEncoder.queueInputBuffer(encoderInputIndex, 0, byteBufferMeta.getBufferinfo().size, MainActivity.timeStamp.get(presentationTime_temp), byteBufferMeta.getBufferinfo().flags);
+
+                        int flag = byteBufferMeta.getBufferinfo().flags;
+
+                        if(flag == 1 || flag==0){
+                           flag=  ((frame_index % MainActivity.KEY_FRAME_RATE) == 0)?MediaCodec.BUFFER_FLAG_SYNC_FRAME:0;
+                        }
+                        mediaCodecEncoder.queueInputBuffer(encoderInputIndex, 0, byteBufferMeta.getBufferinfo().size, MainActivity.timeStamp.get(presentationTime_temp), flag);
+
+                        frame_index++;
 
                         previous_time_stamp = MainActivity.timeStamp.get(presentationTime_temp);
 
@@ -117,8 +126,14 @@ public class EncoderThread implements Runnable {
                             previous_time_stamp = previous_time_stamp + MainActivity.time_delta.get(decodedDataIndex);
                         }
                         MainActivity.final_time_stamp.add(previous_time_stamp);
-                        mediaCodecEncoder.queueInputBuffer(encoderInputIndex, 0, byteBufferMeta.getBufferinfo().size, previous_time_stamp, byteBufferMeta.getBufferinfo().flags);
+                        int flag = byteBufferMeta.getBufferinfo().flags;
 
+                        if(flag == 1 || flag==0){
+                            flag=  ((frame_index % MainActivity.KEY_FRAME_RATE) == 0)?MediaCodec.BUFFER_FLAG_SYNC_FRAME:0;
+                        }
+
+                        mediaCodecEncoder.queueInputBuffer(encoderInputIndex, 0, byteBufferMeta.getBufferinfo().size, previous_time_stamp,flag);
+                        frame_index++;
                     }
 
                     decodedDataIndex++;
@@ -157,7 +172,7 @@ public class EncoderThread implements Runnable {
                         MediaCodec.BufferInfo temp_info = new MediaCodec.BufferInfo();
                         Log.d("presentation_time", "" + presentationTime);
                         temp_info.set(encodedBufferInfo.offset, encodedBufferInfo.size, encodedBufferInfo.presentationTimeUs,encodedBufferInfo.flags);
-                        MainActivity.muxer.writeSampleData(track_index, encodeoutputBuffers[encoderOutputIndex], temp_info);
+                        MainActivity.muxer.writeSampleData(track_index, encodeoutputBuffers[encoderOutputIndex], encodedBufferInfo);
                         mediaCodecEncoder.releaseOutputBuffer(encoderOutputIndex, false);
                         break;
                     }
@@ -171,7 +186,7 @@ public class EncoderThread implements Runnable {
                         temp_info.set(encodedBufferInfo.offset, encodedBufferInfo.size, MainActivity.final_time_stamp.get(presentationTime), encodedBufferInfo.flags);
                         presentationTime++;
                         MainActivity.temp_time_stamp.add(temp_info.presentationTimeUs);
-                        MainActivity.muxer.writeSampleData(track_index, encodeoutputBuffers[encoderOutputIndex], temp_info);
+                        MainActivity.muxer.writeSampleData(track_index, encodeoutputBuffers[encoderOutputIndex], encodedBufferInfo);
                         mediaCodecEncoder.releaseOutputBuffer(encoderOutputIndex, false);
                     }
                     break;
