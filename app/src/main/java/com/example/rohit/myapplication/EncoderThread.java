@@ -123,7 +123,7 @@ public class EncoderThread implements Runnable {
                     decodedDataIndex++;
 
                     if ((decodedDataIndex == MainActivity.decoded_buffer_info.size() - 1) && !once_done) {
-                        reverse(false);
+                        reverse();
                         decodedDataIndex = 0;
                         once_done = true;
                     }
@@ -288,8 +288,8 @@ public class EncoderThread implements Runnable {
 
         for (int i = 0; i < (size / 2); i++) {
             ByteBuffer tempBuffer = MainActivity.decoded_buffer_info.get(i).getByteBuffer();
-            MainActivity.decoded_buffer_info.get(i).setByteBuffer(MainActivity.decoded_buffer_info.get(size - i - 1).getByteBuffer());
-            MainActivity.decoded_buffer_info.get(size - i - 1).setByteBuffer(tempBuffer);
+            MainActivity.decoded_buffer_info.get(i).setByteBuffer(MainActivity.decoded_buffer_info.get(size - i - 2).getByteBuffer());
+            MainActivity.decoded_buffer_info.get(size - i - 2).setByteBuffer(tempBuffer);
         }
 
     }
