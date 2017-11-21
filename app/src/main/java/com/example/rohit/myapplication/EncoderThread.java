@@ -123,7 +123,7 @@ public class EncoderThread implements Runnable {
                     decodedDataIndex++;
 
                     if ((decodedDataIndex == MainActivity.decoded_buffer_info.size() - 1) && !once_done) {
-                        //reverse();
+                        reverse(false);
                         decodedDataIndex = 0;
                         once_done = true;
                     }
@@ -292,6 +292,62 @@ public class EncoderThread implements Runnable {
             MainActivity.decoded_buffer_info.get(size - i - 1).setByteBuffer(tempBuffer);
         }
 
+    }
+
+    private void reverse(boolean endOfDecoding) {
+
+        int size = MainActivity.decoded_buffer_info.size()-2;
+
+
+        for (int i = 0; i < size/2; i++) {
+            if(i==size-i-1)
+                break;
+
+
+            ByteBufferMeta tempBuffer = MainActivity.decoded_buffer_info.get(i);
+            ByteBufferMeta tempBuffer1 = MainActivity.decoded_buffer_info.get(size-i-2);
+
+            MainActivity.decoded_buffer_info.set(i,tempBuffer1);
+            MainActivity.decoded_buffer_info.set(size-i-2,tempBuffer);
+
+
+            MediaCodec.BufferInfo tempBuffer2 = MainActivity.decoded_buffer_info.get(i).getBufferinfo();
+            MediaCodec.BufferInfo tempBuffer3 = MainActivity.decoded_buffer_info.get(size-i-2).getBufferinfo();
+
+
+            long presentationtime;
+            int flag;
+
+            presentationtime = tempBuffer2.presentationTimeUs;
+            flag = tempBuffer2.flags;
+
+
+            tempBuffer2.set(tempBuffer2.offset,tempBuffer2.size,tempBuffer3.presentationTimeUs,tempBuffer3.flags);
+            tempBuffer3.set(tempBuffer3.offset,tempBuffer3.size,presentationtime,flag);
+
+            /*
+
+            ByteBufferMeta tempBuffer = MainActivity.buffer_info_temp.get(i);
+            ByteBufferMeta tempBuffer1 = MainActivity.buffer_info_temp.get(size-i-1);
+
+            ByteBuffer b_new = ByteBuffer.allocate(tempBuffer.getByteBuffer().remaining());
+            ByteBuffer b1_new = ByteBuffer.allocate(tempBuffer1.getByteBuffer().remaining());
+
+            //tempBuffer.getByteBuffer().put(b_new);
+            b_new.put(tempBuffer.getByteBuffer());
+            b1_new.put(tempBuffer1.getByteBuffer());
+            //tempBuffer1.getByteBuffer().put(b1_new);
+
+//
+//            ByteBuffer b1 = tempBuffer.getByteBuffer();
+//            ByteBuffer b2 = tempBuffer1.getByteBuffer();
+
+            tempBuffer.setByteBuffer(b1_new);
+            tempBuffer1.setByteBuffer(b_new);
+
+            */
+
+        }
     }
 
 }
