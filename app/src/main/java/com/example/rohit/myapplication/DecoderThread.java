@@ -33,7 +33,7 @@ public class DecoderThread implements Runnable {
     DecoderThread() {
         frame_count = 0;
         mediaExtractor = new MediaExtractor();
-        filepath = Environment.getExternalStorageDirectory().getPath() + "/Hike" + "/sample12.mp4";
+        filepath = Environment.getExternalStorageDirectory().getPath() + "/Hike" + "/sample7.mp4";
 
         try {
             mediaExtractor.setDataSource(filepath);
@@ -164,12 +164,20 @@ public class DecoderThread implements Runnable {
                     MediaCodec.BufferInfo info = new MediaCodec.BufferInfo();
                     info.set(decodedBufferInfo.offset, decodedBufferInfo.size, decodedBufferInfo.presentationTimeUs, decodedBufferInfo.flags);
 
-                    MainActivity.decoded_buffer_info.add(new ByteBufferMeta(info, last));
-                    mediaCodecDecoder.releaseOutputBuffer(decodeOutputIndex, false);
+
 
                     if ((decodedBufferInfo.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
+                        MainActivity.remove = 0;
                         endOfDecoding = true;
                     }
+
+                    if(MainActivity.remove == 0)
+                        MainActivity.decoded_buffer_info.add(new ByteBufferMeta(info, last));
+
+                    MainActivity.remove = (MainActivity.remove + 1)%2;
+
+                    mediaCodecDecoder.releaseOutputBuffer(decodeOutputIndex, false);
+
 
                     break;
             }
@@ -181,11 +189,13 @@ public class DecoderThread implements Runnable {
         mediaExtractor.release();
 
         ByteBufferMeta last = MainActivity.decoded_buffer_info.get(MainActivity.decoded_buffer_info.size()-1);
-        MainActivity.decoded_buffer_info.remove(MainActivity.decoded_buffer_info.size()-1);
 
-        reverse();
 
-        MainActivity.decoded_buffer_info.add(last);
+        //MainActivity.decoded_buffer_info.remove(MainActivity.decoded_buffer_info.size()-1);
+
+        //reverse();
+
+        //MainActivity.decoded_buffer_info.add(last);
 
         Log.d("Result ", "duration " + duration);
         Log.d("Result ", "no. of frames " + frame_count);
@@ -202,7 +212,7 @@ public class DecoderThread implements Runnable {
     private void reverse() {
 
         int size = (MainActivity.decoded_buffer_info.size());
-        ;
+
 
         for (int i = 0; i < size/2; i++) {
             ByteBuffer tempBuffer = MainActivity.decoded_buffer_info.get(i).getByteBuffer();
@@ -218,6 +228,7 @@ public class DecoderThread implements Runnable {
             if (mime.startsWith("video/")) {
                 if (mediaFormat.containsKey(MediaFormat.KEY_FRAME_RATE)) {
                     KEY_FRAME_RATE = mediaFormat.getInteger(MediaFormat.KEY_FRAME_RATE);
+                    MainActivity.KEY_FRAME_RATE = KEY_FRAME_RATE;
                 }
                 if (mediaFormat.containsKey(MediaFormat.KEY_DURATION)) {
                     duration = mediaFormat.getLong(MediaFormat.KEY_DURATION);
@@ -272,10 +283,8 @@ public class DecoderThread implements Runnable {
     }
 
 
-    public void setEncoderThread(EncoderThread encoderThread) {
+    void setEncoderThread(EncoderThread encoderThread) {
         this.encoderThread = encoderThread;
     }
-
-
 
 }

@@ -23,10 +23,17 @@ public class MainActivity extends AppCompatActivity {
     static MediaMuxer muxer;
     static long duration;
 
-    static int KEY_FRAME_RATE = 10;
+    static int KEY_FRAME_RATE;
+    static int remove = 0;
     static ArrayList<ByteBufferMeta> decoded_buffer_info = new ArrayList();
     static int total_frames;
     static HashMap<Integer,Long> timeStamp = new HashMap<>();
+    static ArrayList<Long> temp_time_stamp = new ArrayList();
+    static ArrayList<Long> time_delta = new ArrayList<>();
+    static ArrayList<Long> final_time_stamp = new ArrayList<>();
+
+
+
 
     @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
     @Override

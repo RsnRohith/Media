@@ -14,6 +14,7 @@ import android.support.annotation.RequiresApi;
 import android.util.Log;
 
 import java.io.IOException;
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 
@@ -36,6 +37,9 @@ public class EncoderThread implements Runnable {
     MediaCodec decoder;
     Context mContext;
     private int track_index;
+    int presentationTime = 0;
+    int presentationTime_temp = 1;
+    boolean once_done = false;
 
     // requires bytrebuffer and bufferinfo
 
@@ -66,13 +70,18 @@ public class EncoderThread implements Runnable {
         encodeoinputBuffers = mediaCodecEncoder.getInputBuffers();
 
 
-
         int decodedDataIndex = 0;
+        long previous_time_stamp = 0;
+        long delta_time;
 
         while (!endOfEncoding) {
 
+            if (decodedDataIndex < MainActivity.decoded_buffer_info.size()) {
 
-            if(decodedDataIndex < MainActivity.decoded_buffer_info.size()) {
+                if(decodedDataIndex == (MainActivity.decoded_buffer_info.size()-2) && once_done){
+                    decodedDataIndex++;
+                    continue;
+                }
 
                 encoderInputIndex = mediaCodecEncoder.dequeueInputBuffer(10000);
 
@@ -80,12 +89,44 @@ public class EncoderThread implements Runnable {
 
                     ByteBuffer inputBuffer = encodeoinputBuffers[encoderInputIndex];
                     inputBuffer.clear();
-                    ByteBufferMeta byteBufferMeta = MainActivity.decoded_buffer_info.get(decodedDataIndex);
 
+                    ByteBufferMeta byteBufferMeta;
+
+                    byteBufferMeta = MainActivity.decoded_buffer_info.get(decodedDataIndex);
                     inputBuffer.put(byteBufferMeta.getByteBuffer());
-                    mediaCodecEncoder.queueInputBuffer(encoderInputIndex, 0, byteBufferMeta.getBufferinfo().size, byteBufferMeta.getBufferinfo().presentationTimeUs, byteBufferMeta.getBufferinfo().flags);
+
+                    if (!once_done) {
+
+                        MainActivity.final_time_stamp.add(MainActivity.timeStamp.get(presentationTime_temp));
+                        mediaCodecEncoder.queueInputBuffer(encoderInputIndex, 0, byteBufferMeta.getBufferinfo().size, MainActivity.timeStamp.get(presentationTime_temp), byteBufferMeta.getBufferinfo().flags);
+
+                        previous_time_stamp = MainActivity.timeStamp.get(presentationTime_temp);
+
+                        if (presentationTime_temp != 1) {
+                            delta_time = previous_time_stamp - MainActivity.timeStamp.get(presentationTime_temp - 1);
+                            MainActivity.time_delta.add(0, delta_time);
+                        }
+
+                        presentationTime_temp++;
+                    } else {
+                        if (decodedDataIndex == (MainActivity.decoded_buffer_info.size()-1)) {
+                            previous_time_stamp = previous_time_stamp + 50000;
+                        }
+                        else{
+                            previous_time_stamp = previous_time_stamp + MainActivity.time_delta.get(decodedDataIndex);
+                        }
+                        MainActivity.final_time_stamp.add(previous_time_stamp);
+                        mediaCodecEncoder.queueInputBuffer(encoderInputIndex, 0, byteBufferMeta.getBufferinfo().size, previous_time_stamp, byteBufferMeta.getBufferinfo().flags);
+
+                    }
 
                     decodedDataIndex++;
+
+                    if ((decodedDataIndex == MainActivity.decoded_buffer_info.size() - 1) && !once_done) {
+                        //reverse();
+                        decodedDataIndex = 0;
+                        once_done = true;
+                    }
                 }
             }
 
@@ -105,35 +146,47 @@ public class EncoderThread implements Runnable {
                     Log.d("EncodeActivity", "dequeueOutputBuffer timed out!");
                     break;
                 default:
-                    if(MainActivity.muxer == null){
+                    if (MainActivity.muxer == null) {
                         track_index = MainActivity.muxer.addTrack(mediaCodecEncoder.getOutputFormat());
                         MainActivity.muxer.start();
                     }
                     if ((MediaCodec.BUFFER_FLAG_END_OF_STREAM & encodedBufferInfo.flags) != 0) {
                         endOfEncoding = true;
+                        //mediaCodecEncoder.releaseOutputBuffer(encoderOutputIndex, false);
+                        MediaCodec.BufferInfo temp_info = new MediaCodec.BufferInfo();
+                        Log.d("presentation_time", "" + presentationTime);
+                        temp_info.set(encodedBufferInfo.offset, encodedBufferInfo.size, encodedBufferInfo.presentationTimeUs,encodedBufferInfo.flags);
+                        MainActivity.muxer.writeSampleData(track_index, encodeoutputBuffers[encoderOutputIndex], temp_info);
+                        mediaCodecEncoder.releaseOutputBuffer(encoderOutputIndex, false);
+                        break;
+                    }
+                    if ((MediaCodec.BUFFER_FLAG_CODEC_CONFIG & encodedBufferInfo.flags) != 0) {
+                        mediaCodecEncoder.releaseOutputBuffer(encoderOutputIndex, false);
                         break;
                     }
                     if (encodedBufferInfo.size != 0) {
-                        MainActivity.muxer.writeSampleData(track_index,encodeoutputBuffers[encoderOutputIndex],encodedBufferInfo);
+                        MediaCodec.BufferInfo temp_info = new MediaCodec.BufferInfo();
+                        Log.d("presentation_time", "" + presentationTime);
+                        temp_info.set(encodedBufferInfo.offset, encodedBufferInfo.size, MainActivity.final_time_stamp.get(presentationTime), encodedBufferInfo.flags);
+                        presentationTime++;
+                        MainActivity.temp_time_stamp.add(temp_info.presentationTimeUs);
+                        MainActivity.muxer.writeSampleData(track_index, encodeoutputBuffers[encoderOutputIndex], temp_info);
                         mediaCodecEncoder.releaseOutputBuffer(encoderOutputIndex, false);
                     }
                     break;
             }
-
-
         }
-        MediaCodec.BufferInfo final_frame_info= new MediaCodec.BufferInfo();
-        final_frame_info.presentationTimeUs = MainActivity.duration+50000;
+        //MediaCodec.BufferInfo final_frame_info= new MediaCodec.BufferInfo();
+        //final_frame_info.presentationTimeUs = MainActivity.duration+50000;
+        //final_frame_info.flags = MediaCodec.BUFFER_FLAG_END_OF_STREAM;
 
+        //final_frame_info.set(0,10, MainActivity.duration+50000,MediaCodec.BUFFER_FLAG_END_OF_STREAM);
 
-        MainActivity.muxer.writeSampleData(track_index,ByteBuffer.allocate(10),final_frame_info);
-
+        //MainActivity.muxer.writeSampleData(track_index,ByteBuffer.allocate(10),final_frame_info);
 
 
         stopEncoder();
     }
-
-
 
 
     private MediaFormat mediFormat;
@@ -143,8 +196,8 @@ public class EncoderThread implements Runnable {
         try {
             int colorFormat;
             mediaCodecEncoder = MediaCodec.createEncoderByType("video/avc");
-            mediFormat = MediaFormat.createVideoFormat("video/avc",  mediaFormat.getInteger(MediaFormat.KEY_WIDTH),mediaFormat.getInteger(MediaFormat.KEY_HEIGHT));
-            mediFormat.setInteger(MediaFormat.KEY_BIT_RATE, 2000000);
+            mediFormat = MediaFormat.createVideoFormat("video/avc", mediaFormat.getInteger(MediaFormat.KEY_WIDTH), mediaFormat.getInteger(MediaFormat.KEY_HEIGHT));
+            mediFormat.setInteger(MediaFormat.KEY_BIT_RATE, 64000);
             mediFormat.setInteger(MediaFormat.KEY_FRAME_RATE, 30);
             mediFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, MainActivity.KEY_FRAME_RATE);
 
@@ -227,6 +280,19 @@ public class EncoderThread implements Runnable {
     // Missing codec specific data
     // java.lang.IllegalStateException: Failed to stop the muxer
 
+
+    private void reverse() {
+
+        int size = (MainActivity.decoded_buffer_info.size() - 2);
+
+
+        for (int i = 0; i < (size / 2); i++) {
+            ByteBuffer tempBuffer = MainActivity.decoded_buffer_info.get(i).getByteBuffer();
+            MainActivity.decoded_buffer_info.get(i).setByteBuffer(MainActivity.decoded_buffer_info.get(size - i - 1).getByteBuffer());
+            MainActivity.decoded_buffer_info.get(size - i - 1).setByteBuffer(tempBuffer);
+        }
+
+    }
 
 }
 
