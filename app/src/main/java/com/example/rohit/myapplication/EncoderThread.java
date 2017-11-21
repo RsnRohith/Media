@@ -41,6 +41,7 @@ public class EncoderThread implements Runnable {
     int presentationTime_temp = 1;
     boolean once_done = false;
 
+
     // requires bytrebuffer and bufferinfo
 
 
@@ -288,8 +289,8 @@ public class EncoderThread implements Runnable {
 
         for (int i = 0; i < (size / 2); i++) {
             ByteBuffer tempBuffer = MainActivity.decoded_buffer_info.get(i).getByteBuffer();
-            MainActivity.decoded_buffer_info.get(i).setByteBuffer(MainActivity.decoded_buffer_info.get(size - i - 2).getByteBuffer());
-            MainActivity.decoded_buffer_info.get(size - i - 2).setByteBuffer(tempBuffer);
+            MainActivity.decoded_buffer_info.get(i).setByteBuffer(MainActivity.decoded_buffer_info.get(size - i - 1).getByteBuffer());
+            MainActivity.decoded_buffer_info.get(size - i - 1).setByteBuffer(tempBuffer);
         }
 
     }
