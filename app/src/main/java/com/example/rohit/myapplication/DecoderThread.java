@@ -33,7 +33,7 @@ public class DecoderThread implements Runnable {
     DecoderThread() {
         frame_count = 0;
         mediaExtractor = new MediaExtractor();
-        filepath = Environment.getExternalStorageDirectory().getPath() + "/Hike" + "/sample7.mp4";
+        filepath = Environment.getExternalStorageDirectory().getPath() + "/Hike" + "/sample15.mp4";
 
         try {
             mediaExtractor.setDataSource(filepath);
@@ -106,63 +106,29 @@ public class DecoderThread implements Runnable {
             switch (decodeOutputIndex) {
                 case MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED:
                     Log.d("DecodeActivity", "INFO_OUTPUT_BUFFERS_CHANGED");
-                    //MainActivity.deocodeoutputBuffers = mediaCodecDecoder.getOutputBuffers();
+                    decodeoutputBuffers = mediaCodecDecoder.getOutputBuffers();
                     break;
                 case MediaCodec.INFO_OUTPUT_FORMAT_CHANGED:
                     Log.d("DecodeActivity", "New format " + mediaCodecDecoder.getOutputFormat());
+                    //mediaCodecDecoder.getOutputFormat();
+                    //encoderThread.setFormat( mediaCodecDecoder.getOutputFormat());
                     break;
                 case MediaCodec.INFO_TRY_AGAIN_LATER:
                     Log.d("DecodeActivity", "dequeueOutputBuffer timed out!");
                     break;
                 default:
-/*
-                        ByteBuffer byteBuffers = decodeoutputBuffers[decodeOutputIndex];
-                        byteBuffers.position(decodedBufferInfo.offset);
-                        byteBuffers.limit(decodedBufferInfo.offset+decodedBufferInfo.size);
-
-                        byte[] temp = new byte[byteBuffers.remaining()];
-                        byteBuffers.get(temp);
-
-                        ByteBuffer last = ByteBuffer.wrap(temp);
-                        last.position(decodedBufferInfo.offset);
-                        last.limit(decodedBufferInfo.offset+decodedBufferInfo.size);
-
-
-                        MediaCodec.BufferInfo info = new MediaCodec.BufferInfo();
-                        info.set(decodedBufferInfo.offset,decodedBufferInfo.size,decodedBufferInfo.presentationTimeUs,decodedBufferInfo.flags);
-
-                        MainActivity.buffer_info_temp.add(new ByteBufferMeta(info, last));
-                        mediaCodecDecoder.releaseOutputBuffer(decodeOutputIndex, false);
-
-                        if (MainActivity.buffer_info_temp.size() == MainActivity.KEY_FRAME_RATE) {
-                            MainActivity.consumingIndex = 0;
-                            reverse(endOfDecoding);
-                            MainActivity.isQueueEmptying = true;
-                        }
-
-                        if ((decodedBufferInfo.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
-                            MainActivity.consumingIndex = 0;
-                            endOfDecoding = true;
-                            reverse(endOfDecoding);
-                            MainActivity.isQueueEmptying = true;
-                        }
-
-
-                        */
-
                     ByteBuffer byteBuffers = decodeoutputBuffers[decodeOutputIndex];
                     byteBuffers.position(decodedBufferInfo.offset);
-                    byteBuffers.limit(decodedBufferInfo.offset + decodedBufferInfo.size);
+                    //byteBuffers.limit(decodedBufferInfo.offset + decodedBufferInfo.size);
 
-                    byte[] temp = new byte[byteBuffers.remaining()];
-                    byteBuffers.get(temp);
 
-                    ByteBuffer last = ByteBuffer.wrap(temp);
-                    last.position(decodedBufferInfo.offset);
-                    last.limit(decodedBufferInfo.offset + decodedBufferInfo.size);
+                    ByteBuffer last_buffer = ByteBuffer.allocate(byteBuffers.remaining());
+                    last_buffer.put(byteBuffers);
+                    last_buffer.position(0);
+                    //byteBuffers.position(decodedBufferInfo.offset);
 
                     MediaCodec.BufferInfo info = new MediaCodec.BufferInfo();
-                    info.set(decodedBufferInfo.offset, decodedBufferInfo.size, decodedBufferInfo.presentationTimeUs, decodedBufferInfo.flags);
+                    info.set(0, decodedBufferInfo.size, decodedBufferInfo.presentationTimeUs, decodedBufferInfo.flags);
 
 
 
@@ -172,7 +138,7 @@ public class DecoderThread implements Runnable {
                     }
 
                     if(MainActivity.remove == 0)
-                        MainActivity.decoded_buffer_info.add(new ByteBufferMeta(info, last));
+                        MainActivity.decoded_buffer_info.add(new ByteBufferMeta(info, last_buffer));
 
                     MainActivity.remove = (MainActivity.remove + 1)%2;
 
@@ -188,15 +154,6 @@ public class DecoderThread implements Runnable {
 
         mediaExtractor.release();
 
-        ByteBufferMeta last = MainActivity.decoded_buffer_info.get(MainActivity.decoded_buffer_info.size()-1);
-
-
-        //MainActivity.decoded_buffer_info.remove(MainActivity.decoded_buffer_info.size()-1);
-
-        //reverse();
-
-        //MainActivity.decoded_buffer_info.add(last);
-
         Log.d("Result ", "duration " + duration);
         Log.d("Result ", "no. of frames " + frame_count);
         Log.d("Result ", "frames per second " + (frame_count / duration));
@@ -204,20 +161,40 @@ public class DecoderThread implements Runnable {
 
         Log.d("SAMPLETIME", "" + duration);
 
+        //printInfo();
+
+        exchangeIframeRate();
+
+        printInfo();
+
         Thread encoder = new Thread(encoderThread);
         encoder.start();
 
     }
 
-    private void reverse() {
+    private void exchangeIframeRate() {
 
-        int size = (MainActivity.decoded_buffer_info.size());
+        int frame_count = 0;
+
+        for(int i=0;i<MainActivity.decoded_buffer_info.size()-1;i++){
+            MediaCodec.BufferInfo info = MainActivity.decoded_buffer_info.get(i).getBufferinfo();
+            if((frame_count % MainActivity.KEY_FRAME_RATE) == 0) {
+                info.set(info.offset, info.size, info.presentationTimeUs, MediaCodec.BUFFER_FLAG_SYNC_FRAME);
+            }
+            else{
+                info.set(info.offset, info.size, info.presentationTimeUs,0);
+            }
 
 
-        for (int i = 0; i < size/2; i++) {
-            ByteBuffer tempBuffer = MainActivity.decoded_buffer_info.get(i).getByteBuffer();
-            MainActivity.decoded_buffer_info.get(i).setByteBuffer(MainActivity.decoded_buffer_info.get(size - i - 1).getByteBuffer());
-            MainActivity.decoded_buffer_info.get(size - i - 1).setByteBuffer(tempBuffer);
+            frame_count++;
+        }
+
+    }
+
+    private void printInfo() {
+        for(int i=0;i<MainActivity.decoded_buffer_info.size();i++){
+            MediaCodec.BufferInfo info = MainActivity.decoded_buffer_info.get(i).getBufferinfo();
+            Log.d("AfterDecoded",""+(i+1)+" "+info.offset+" "+info.flags+" "+info.presentationTimeUs);
         }
     }
 
@@ -228,7 +205,7 @@ public class DecoderThread implements Runnable {
             if (mime.startsWith("video/")) {
                 if (mediaFormat.containsKey(MediaFormat.KEY_FRAME_RATE)) {
                     KEY_FRAME_RATE = mediaFormat.getInteger(MediaFormat.KEY_FRAME_RATE);
-                    MainActivity.KEY_FRAME_RATE = KEY_FRAME_RATE;
+                    MainActivity.KEY_FRAME_RATE = 10;
                 }
                 if (mediaFormat.containsKey(MediaFormat.KEY_DURATION)) {
                     duration = mediaFormat.getLong(MediaFormat.KEY_DURATION);

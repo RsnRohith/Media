@@ -8,15 +8,11 @@ import android.media.MediaFormat;
 import android.media.MediaMuxer;
 import android.os.Build;
 import android.os.Environment;
-import android.os.Handler;
-import android.os.Looper;
 import android.support.annotation.RequiresApi;
 import android.util.Log;
 
 import java.io.IOException;
-import java.nio.Buffer;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 
 /**
  * Created by rohit on 10/11/17.
@@ -96,17 +92,14 @@ public class EncoderThread implements Runnable {
 
                     byteBufferMeta = MainActivity.decoded_buffer_info.get(decodedDataIndex);
                     inputBuffer.put(byteBufferMeta.getByteBuffer());
+                    inputBuffer.position(0);
+                    byteBufferMeta.getByteBuffer().position(0);
 
                     if (!once_done) {
 
                         MainActivity.final_time_stamp.add(MainActivity.timeStamp.get(presentationTime_temp));
 
-                        int flag = byteBufferMeta.getBufferinfo().flags;
-
-                        if(flag == 1 || flag==0){
-                           flag=  ((frame_index % MainActivity.KEY_FRAME_RATE) == 0)?MediaCodec.BUFFER_FLAG_SYNC_FRAME:0;
-                        }
-                        mediaCodecEncoder.queueInputBuffer(encoderInputIndex, 0, byteBufferMeta.getBufferinfo().size, MainActivity.timeStamp.get(presentationTime_temp), flag);
+                        mediaCodecEncoder.queueInputBuffer(encoderInputIndex, 0, byteBufferMeta.getBufferinfo().size, MainActivity.timeStamp.get(presentationTime_temp), byteBufferMeta.getBufferinfo().flags);
 
                         frame_index++;
 
@@ -128,11 +121,12 @@ public class EncoderThread implements Runnable {
                         MainActivity.final_time_stamp.add(previous_time_stamp);
                         int flag = byteBufferMeta.getBufferinfo().flags;
 
-                        if(flag == 1 || flag==0){
+                        if((flag == MediaCodec.BUFFER_FLAG_SYNC_FRAME) || (flag == 0)){
                             flag=  ((frame_index % MainActivity.KEY_FRAME_RATE) == 0)?MediaCodec.BUFFER_FLAG_SYNC_FRAME:0;
                         }
 
                         mediaCodecEncoder.queueInputBuffer(encoderInputIndex, 0, byteBufferMeta.getBufferinfo().size, previous_time_stamp,flag);
+                        byteBufferMeta.setByteBuffer(null);
                         frame_index++;
                     }
 
@@ -156,14 +150,18 @@ public class EncoderThread implements Runnable {
                 case MediaCodec.INFO_OUTPUT_FORMAT_CHANGED:
                     Log.d("EncodeActivity", "New format " + mediaCodecEncoder.getOutputFormat());
                     track_index = MainActivity.muxer.addTrack(mediaCodecEncoder.getOutputFormat());
+                    MainActivity.muxer.setOrientationHint(270);
                     MainActivity.muxer.start();
                     break;
                 case MediaCodec.INFO_TRY_AGAIN_LATER:
                     Log.d("EncodeActivity", "dequeueOutputBuffer timed out!");
                     break;
                 default:
+                    Log.d("EncodeActivityinfo",""+encodedBufferInfo.offset+" "+encodedBufferInfo.flags+" "+encodedBufferInfo.presentationTimeUs+" "+encodedBufferInfo.size);
                     if (MainActivity.muxer == null) {
                         track_index = MainActivity.muxer.addTrack(mediaCodecEncoder.getOutputFormat());
+
+                        MainActivity.muxer.setOrientationHint(0);
                         MainActivity.muxer.start();
                     }
                     if ((MediaCodec.BUFFER_FLAG_END_OF_STREAM & encodedBufferInfo.flags) != 0) {
@@ -172,7 +170,7 @@ public class EncoderThread implements Runnable {
                         MediaCodec.BufferInfo temp_info = new MediaCodec.BufferInfo();
                         Log.d("presentation_time", "" + presentationTime);
                         temp_info.set(encodedBufferInfo.offset, encodedBufferInfo.size, encodedBufferInfo.presentationTimeUs,encodedBufferInfo.flags);
-                        MainActivity.muxer.writeSampleData(track_index, encodeoutputBuffers[encoderOutputIndex], encodedBufferInfo);
+                        MainActivity.muxer.writeSampleData(track_index, encodeoutputBuffers[encoderOutputIndex], temp_info);
                         mediaCodecEncoder.releaseOutputBuffer(encoderOutputIndex, false);
                         break;
                     }
@@ -183,10 +181,10 @@ public class EncoderThread implements Runnable {
                     if (encodedBufferInfo.size != 0) {
                         MediaCodec.BufferInfo temp_info = new MediaCodec.BufferInfo();
                         Log.d("presentation_time", "" + presentationTime);
-                        temp_info.set(encodedBufferInfo.offset, encodedBufferInfo.size, MainActivity.final_time_stamp.get(presentationTime), encodedBufferInfo.flags);
+                        temp_info.set(encodedBufferInfo.offset, encodedBufferInfo.size, encodedBufferInfo.presentationTimeUs, encodedBufferInfo.flags);
                         presentationTime++;
                         MainActivity.temp_time_stamp.add(temp_info.presentationTimeUs);
-                        MainActivity.muxer.writeSampleData(track_index, encodeoutputBuffers[encoderOutputIndex], encodedBufferInfo);
+                        MainActivity.muxer.writeSampleData(track_index, encodeoutputBuffers[encoderOutputIndex], temp_info);
                         mediaCodecEncoder.releaseOutputBuffer(encoderOutputIndex, false);
                     }
                     break;
@@ -212,14 +210,15 @@ public class EncoderThread implements Runnable {
         try {
             int colorFormat;
             mediaCodecEncoder = MediaCodec.createEncoderByType("video/avc");
+
             mediFormat = MediaFormat.createVideoFormat("video/avc", mediaFormat.getInteger(MediaFormat.KEY_WIDTH), mediaFormat.getInteger(MediaFormat.KEY_HEIGHT));
-            mediFormat.setInteger(MediaFormat.KEY_BIT_RATE, 64000);
+            mediFormat.setInteger(MediaFormat.KEY_BIT_RATE, 2000000);
             mediFormat.setInteger(MediaFormat.KEY_FRAME_RATE, 30);
             mediFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, MainActivity.KEY_FRAME_RATE);
 
             MediaCodecInfo info = selectCodec("video/avc");
 
-            colorFormat = selectColorFormat(info, "video/avc");
+            colorFormat = selectColorFormat(info);
 
 
             mediFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT, colorFormat);
@@ -236,8 +235,8 @@ public class EncoderThread implements Runnable {
         }
     }
 
-    private static int selectColorFormat(MediaCodecInfo codecInfo, String mimeType) {
-        MediaCodecInfo.CodecCapabilities capabilities = codecInfo.getCapabilitiesForType(mimeType);
+    private static int selectColorFormat(MediaCodecInfo codecInfo) {
+        MediaCodecInfo.CodecCapabilities capabilities = codecInfo.getCapabilitiesForType("video/avc");
         for (int i = 0; i < capabilities.colorFormats.length; i++) {
             int colorFormat = capabilities.colorFormats[i];
             if (isRecognizedFormat(colorFormat)) {
@@ -254,7 +253,7 @@ public class EncoderThread implements Runnable {
     private static boolean isRecognizedFormat(int colorFormat) {
         switch (colorFormat) {
             // these are the formats we know how to handle for this test
-            case MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Planar:
+            //case MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Planar:
             case MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420PackedPlanar:
             case MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420SemiPlanar:
             case MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420PackedSemiPlanar:
@@ -366,6 +365,9 @@ public class EncoderThread implements Runnable {
         }
     }
 
+    public void setFormat(MediaFormat format) {
+        this.mediaFormat = format;
+    }
 }
 
 

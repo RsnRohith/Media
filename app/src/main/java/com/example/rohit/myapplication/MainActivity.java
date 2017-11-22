@@ -23,7 +23,7 @@ public class MainActivity extends AppCompatActivity {
     static MediaMuxer muxer;
     static long duration;
 
-    static int KEY_FRAME_RATE;
+    static int KEY_FRAME_RATE = 10;
     static int remove = 0;
     static ArrayList<ByteBufferMeta> decoded_buffer_info = new ArrayList();
     static int total_frames;
