@@ -95,6 +95,8 @@ public class EncoderThread implements Runnable {
                     inputBuffer.position(0);
                     byteBufferMeta.getByteBuffer().position(0);
 
+                    //System.gc();
+
                     if (!once_done) {
 
                         MainActivity.final_time_stamp.add(MainActivity.timeStamp.get(presentationTime_temp));
@@ -112,6 +114,8 @@ public class EncoderThread implements Runnable {
 
                         presentationTime_temp++;
                     } else {
+
+                        byteBufferMeta.setByteBuffer(null);
                         if (decodedDataIndex == (MainActivity.decoded_buffer_info.size()-1)) {
                             previous_time_stamp = previous_time_stamp + 50000;
                         }
@@ -126,7 +130,7 @@ public class EncoderThread implements Runnable {
                         }
 
                         mediaCodecEncoder.queueInputBuffer(encoderInputIndex, 0, byteBufferMeta.getBufferinfo().size, previous_time_stamp,flag);
-                        byteBufferMeta.setByteBuffer(null);
+                        //byteBufferMeta.setByteBuffer(null);
                         frame_index++;
                     }
 
@@ -212,7 +216,7 @@ public class EncoderThread implements Runnable {
             mediaCodecEncoder = MediaCodec.createEncoderByType("video/avc");
 
             mediFormat = MediaFormat.createVideoFormat("video/avc", mediaFormat.getInteger(MediaFormat.KEY_WIDTH), mediaFormat.getInteger(MediaFormat.KEY_HEIGHT));
-            mediFormat.setInteger(MediaFormat.KEY_BIT_RATE, 2000000);
+            mediFormat.setInteger(MediaFormat.KEY_BIT_RATE, 10000000);
             mediFormat.setInteger(MediaFormat.KEY_FRAME_RATE, 30);
             mediFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, MainActivity.KEY_FRAME_RATE);
 
@@ -224,7 +228,7 @@ public class EncoderThread implements Runnable {
             mediFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT, colorFormat);
             mediaCodecEncoder.configure(mediFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
 
-            MainActivity.muxer = new MediaMuxer(Environment.getExternalStorageDirectory().getPath() + "/Hike" + "/resample4.mp4", MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4);
+            MainActivity.muxer = new MediaMuxer(Environment.getExternalStorageDirectory().getPath() + "/resample6.mp4", MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4);
 
             //track_index = MainActivity.muxer.addTrack(mediaCodecEncoder.getOutputFormat());
 

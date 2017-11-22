@@ -33,7 +33,7 @@ public class DecoderThread implements Runnable {
     DecoderThread() {
         frame_count = 0;
         mediaExtractor = new MediaExtractor();
-        filepath = Environment.getExternalStorageDirectory().getPath() + "/Hike" + "/sample15.mp4";
+        filepath = Environment.getExternalStorageDirectory().getPath() + "/sample13.mp4";
 
         try {
             mediaExtractor.setDataSource(filepath);
@@ -119,7 +119,7 @@ public class DecoderThread implements Runnable {
                 default:
                     ByteBuffer byteBuffers = decodeoutputBuffers[decodeOutputIndex];
                     byteBuffers.position(decodedBufferInfo.offset);
-                    //byteBuffers.limit(decodedBufferInfo.offset + decodedBufferInfo.size);
+                    byteBuffers.limit(decodedBufferInfo.offset + decodedBufferInfo.size);
 
 
                     ByteBuffer last_buffer = ByteBuffer.allocate(byteBuffers.remaining());
