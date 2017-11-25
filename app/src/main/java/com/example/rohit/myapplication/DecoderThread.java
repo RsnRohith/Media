@@ -33,7 +33,7 @@ public class DecoderThread implements Runnable {
     DecoderThread() {
         frame_count = 0;
         mediaExtractor = new MediaExtractor();
-        filepath = Environment.getExternalStorageDirectory().getPath() + "/sample13.mp4";
+        filepath = Environment.getExternalStorageDirectory().getPath() + "/sample20.mp4";
 
         try {
             mediaExtractor.setDataSource(filepath);
@@ -140,9 +140,19 @@ public class DecoderThread implements Runnable {
                     if(MainActivity.remove == 0)
                         MainActivity.decoded_buffer_info.add(new ByteBufferMeta(info, last_buffer));
 
+
                     MainActivity.remove = (MainActivity.remove + 1)%2;
 
+
+
                     mediaCodecDecoder.releaseOutputBuffer(decodeOutputIndex, false);
+
+                    /*
+                    MainActivity.remove++;
+
+                    MainActivity.remove = (MainActivity.remove)%3;
+
+                    */
 
 
                     break;
@@ -166,6 +176,8 @@ public class DecoderThread implements Runnable {
         exchangeIframeRate();
 
         printInfo();
+
+        stopDecoder();
 
         Thread encoder = new Thread(encoderThread);
         encoder.start();
@@ -206,6 +218,13 @@ public class DecoderThread implements Runnable {
                 if (mediaFormat.containsKey(MediaFormat.KEY_FRAME_RATE)) {
                     KEY_FRAME_RATE = mediaFormat.getInteger(MediaFormat.KEY_FRAME_RATE);
                     MainActivity.KEY_FRAME_RATE = 10;
+                }
+                if (mediaFormat.containsKey(MediaFormat.KEY_BIT_RATE)) {
+                    Log.d("BITRATEEEEE",""+mediaFormat.getInteger(MediaFormat.KEY_BIT_RATE));
+                }
+                if (mediaFormat.containsKey(MediaFormat.KEY_HEIGHT)) {
+                    Log.d("BITRATEEEEE",""+mediaFormat.getInteger(MediaFormat.KEY_HEIGHT));
+                    Log.d("BITRATEEEEE",""+mediaFormat.getInteger(MediaFormat.KEY_WIDTH));
                 }
                 if (mediaFormat.containsKey(MediaFormat.KEY_DURATION)) {
                     duration = mediaFormat.getLong(MediaFormat.KEY_DURATION);
