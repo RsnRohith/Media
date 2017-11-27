@@ -43,7 +43,7 @@ public class Boomerang {
     private HashMap<Integer,Long> timeStamp = new HashMap<>();
     private ArrayList<Long> time_delta = new ArrayList<>();
 
-    public Boomerang(String filepath) {
+    Boomerang(String filepath) {
         this.filepath = filepath;
         initMediaExtractor();
     }
@@ -83,7 +83,7 @@ public class Boomerang {
 
         initializeDecoder();
 
-        int skipFrame = 4;
+        int skipFrame = 3;
         int frame_counter = 0;
 
         boolean endOfDecoding = false;
@@ -94,10 +94,15 @@ public class Boomerang {
         ByteBuffer[] decoderOutputBuffers = mDecoder.getOutputBuffers();
         MediaCodec.BufferInfo decodedBufferInfo = new MediaCodec.BufferInfo();
 
+        int decoderInputIndex = -1;
+        boolean used = true;
 
         while (!endOfDecoding) {
             if (!inputExtracted) {
-                int decoderInputIndex = mDecoder.dequeueInputBuffer(-1);
+                if(used) {
+                    decoderInputIndex = mDecoder.dequeueInputBuffer(-1);
+                    used = false;
+                }
                 if (decoderInputIndex >= 0) {
                     total_frame_count++;
                     inputBuffer = decoderInputBuffers[decoderInputIndex];
@@ -107,9 +112,16 @@ public class Boomerang {
                     if (sampleData < 0) {
                         inputExtracted = true;
                         mDecoder.queueInputBuffer(decoderInputIndex, 0, 0, VIDEO_DURATION + 50000, MediaCodec.BUFFER_FLAG_END_OF_STREAM);
+                        Log.d("Boomerang","EndOfstream");
                     } else {
-                        mDecoder.queueInputBuffer(decoderInputIndex, 0, sampleData, mediaExtractor.getSampleTime(), mediaExtractor.getSampleFlags());
+                        if(frame_counter == 0 || (mediaExtractor.getSampleFlags() == MediaExtractor.SAMPLE_FLAG_SYNC)){
+                            mDecoder.queueInputBuffer(decoderInputIndex, 0, sampleData, mediaExtractor.getSampleTime(), mediaExtractor.getSampleFlags());
+                            frame_counter = 0;
+                            used = true;
+                            Log.d("Resume","Loading");
+                        }
                         mediaExtractor.advance();
+                        frame_counter = (frame_counter + 1) % skipFrame;
                     }
                 }
             }
@@ -140,7 +152,17 @@ public class Boomerang {
                     MediaCodec.BufferInfo info = new MediaCodec.BufferInfo();
                     info.set(0, decodedBufferInfo.size, decodedBufferInfo.presentationTimeUs, decodedBufferInfo.flags);
 
+                    decoded_buffer_info.add(new ByteBufferMeta(info, decoded_output_buffer));
 
+                    mDecoder.releaseOutputBuffer(decodeOutputIndex, false);
+
+                    if ((decodedBufferInfo.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
+                        endOfDecoding = true;
+                    }
+
+                    Log.d("Final","EndOfstrream");
+
+                    /*
                     if ((decodedBufferInfo.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
                         frame_counter = 0;
                         endOfDecoding = true;
@@ -153,8 +175,9 @@ public class Boomerang {
 
                     frame_counter = (frame_counter + 1) % skipFrame;
 
+                    */
 
-                    mDecoder.releaseOutputBuffer(decodeOutputIndex, false);
+
 
 
                     break;
@@ -188,6 +211,10 @@ public class Boomerang {
                     WIDTH = inputMediaFormat.getInteger(MediaFormat.KEY_WIDTH);
                     HEIGHT = inputMediaFormat.getInteger(MediaFormat.KEY_HEIGHT);
                 }
+                if (inputMediaFormat.containsKey(MediaFormat.KEY_FRAME_RATE)) {
+                    Log.d("KEY_FRAME_RATE",""+inputMediaFormat.getInteger(MediaFormat.KEY_FRAME_RATE));
+                }
+
 
                 VIDEO_TRACK_INDEX = i;
                 mediaExtractor.selectTrack(i);
