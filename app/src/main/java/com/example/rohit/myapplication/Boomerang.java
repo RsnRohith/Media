@@ -260,6 +260,8 @@ public class Boomerang {
         boolean once_done = false;
         boolean twice_done = false;
         boolean thrice_done = false;
+        boolean fourth_done = false;
+        boolean fifth_done = false;
 
         int decodedDataIndex = 0;
         long previous_time_stamp = 0;
@@ -274,7 +276,7 @@ public class Boomerang {
 
             if (decodedDataIndex < decoded_buffer_info.size()) {
 
-                if (decodedDataIndex == (decoded_buffer_info.size() - 2) && thrice_done) {
+                if (decodedDataIndex == (decoded_buffer_info.size() - 2) && fifth_done) {
                     decodedDataIndex++;
                     continue;
                 }
@@ -315,7 +317,7 @@ public class Boomerang {
                         if (decodedDataIndex == (decoded_buffer_info.size() - 1)) {
                             previous_time_stamp = previous_time_stamp + 50000;
                         } else {
-                            if(twice_done && (!thrice_done)){
+                            if((twice_done && (!thrice_done)) || (fourth_done && !(fifth_done))){
                                 previous_time_stamp = previous_time_stamp + time_delta.get(time_delta.size()-(decodedDataIndex));
                             }
                             else{
@@ -352,7 +354,16 @@ public class Boomerang {
                         decodedDataIndex = 0;
                         thrice_done = true;
                     }
-
+                    else if((decodedDataIndex == (decoded_buffer_info.size() - 2)) && (thrice_done) && (!fourth_done)) {
+                        reverse();
+                        decodedDataIndex = 1;
+                        fourth_done = true;
+                    }
+                    else if((decodedDataIndex == (decoded_buffer_info.size() - 1)) && fourth_done && (!fifth_done)) {
+                        reverse();
+                        decodedDataIndex = 0;
+                        fifth_done = true;
+                    }
                 }
             }
 
@@ -399,7 +410,7 @@ public class Boomerang {
     @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
     private void initializeMuxer() {
         try {
-            mediaMuxer = new MediaMuxer(Environment.getExternalStorageDirectory().getPath() + "/resample26_twice.mp4", MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4);
+            mediaMuxer = new MediaMuxer(Environment.getExternalStorageDirectory().getPath() + "/resample28_thrice.mp4", MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4);
         } catch (IOException e) {
             e.printStackTrace();
         }
