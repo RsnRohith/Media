@@ -114,6 +114,7 @@ public class Boomerang {
                         mDecoder.queueInputBuffer(decoderInputIndex, 0, 0, VIDEO_DURATION + 50000, MediaCodec.BUFFER_FLAG_END_OF_STREAM);
                         Log.d("Boomerang","EndOfstream");
                     } else {
+                        Log.d("SAMPLEEEE",""+total_frame_count+" "+frame_counter+" "+(mediaExtractor.getSampleFlags() == MediaExtractor.SAMPLE_FLAG_SYNC));
                         if(frame_counter == 0 || (mediaExtractor.getSampleFlags() == MediaExtractor.SAMPLE_FLAG_SYNC)){
                             mDecoder.queueInputBuffer(decoderInputIndex, 0, sampleData, mediaExtractor.getSampleTime(), mediaExtractor.getSampleFlags());
                             frame_counter = 0;
