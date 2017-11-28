@@ -83,7 +83,7 @@ public class Boomerang {
 
         initializeDecoder();
 
-        int skipFrame = 3;
+        int skipFrame = 2;
         int frame_counter = 0;
 
         boolean endOfDecoding = false;
@@ -377,12 +377,12 @@ public class Boomerang {
     @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
     private void initializeMuxer() {
         try {
-            mediaMuxer = new MediaMuxer(Environment.getExternalStorageDirectory().getPath() + "/resample26.mp4", MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4);
+            mediaMuxer = new MediaMuxer(Environment.getExternalStorageDirectory().getPath() + "/resample28.mp4", MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4);
         } catch (IOException e) {
             e.printStackTrace();
         }
         VIDEO_TRACK_INDEX = mediaMuxer.addTrack(mEncoder.getOutputFormat());
-        mediaMuxer.setOrientationHint(270);
+        mediaMuxer.setOrientationHint(90);
         mediaMuxer.start();
     }
 
