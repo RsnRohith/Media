@@ -258,6 +258,9 @@ public class Boomerang {
 
         boolean endOfEncoding = false;
         boolean once_done = false;
+        boolean twice_done = false;
+        boolean thrice_done = false;
+
         int decodedDataIndex = 0;
         long previous_time_stamp = 0;
         long delta_time;
@@ -266,11 +269,12 @@ public class Boomerang {
 
         MediaCodec.BufferInfo encodedBufferInfo = new MediaCodec.BufferInfo();
 
+        Log.d("Sizeeeee",""+decoded_buffer_info.size());
         while (!endOfEncoding) {
 
             if (decodedDataIndex < decoded_buffer_info.size()) {
 
-                if (decodedDataIndex == (decoded_buffer_info.size() - 2) && once_done) {
+                if (decodedDataIndex == (decoded_buffer_info.size() - 2) && thrice_done) {
                     decodedDataIndex++;
                     continue;
                 }
@@ -307,11 +311,17 @@ public class Boomerang {
                         presentationTime_temp++;
                     } else {
 
-                        byteBufferMeta.setByteBuffer(null);
+                        //byteBufferMeta.setByteBuffer(null);
                         if (decodedDataIndex == (decoded_buffer_info.size() - 1)) {
                             previous_time_stamp = previous_time_stamp + 50000;
                         } else {
-                            previous_time_stamp = previous_time_stamp + time_delta.get(decodedDataIndex);
+                            if(twice_done && (!thrice_done)){
+                                previous_time_stamp = previous_time_stamp + time_delta.get(time_delta.size()-(decodedDataIndex));
+                            }
+                            else{
+                                previous_time_stamp = previous_time_stamp + time_delta.get(decodedDataIndex);
+                            }
+
                         }
                         int flag = byteBufferMeta.getBufferinfo().flags;
 
@@ -324,13 +334,25 @@ public class Boomerang {
                         frame_counter++;
                     }
 
+                    Log.d("Decodeddataindex",""+decodedDataIndex);
                     decodedDataIndex++;
 
-                    if ((decodedDataIndex == decoded_buffer_info.size() - 1) && !once_done) {
+                    if (((decodedDataIndex+ 1) == (decoded_buffer_info.size())) && (!once_done)) {
                         reverse();
                         decodedDataIndex = 0;
                         once_done = true;
                     }
+                    else if((decodedDataIndex == (decoded_buffer_info.size() - 2)) && (once_done) && (!twice_done)) {
+                        reverse();
+                        decodedDataIndex = 1;
+                        twice_done = true;
+                    }
+                    else if((decodedDataIndex == (decoded_buffer_info.size() - 1)) && twice_done && (!thrice_done)) {
+                        reverse();
+                        decodedDataIndex = 0;
+                        thrice_done = true;
+                    }
+
                 }
             }
 
@@ -377,7 +399,7 @@ public class Boomerang {
     @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
     private void initializeMuxer() {
         try {
-            mediaMuxer = new MediaMuxer(Environment.getExternalStorageDirectory().getPath() + "/resample28.mp4", MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4);
+            mediaMuxer = new MediaMuxer(Environment.getExternalStorageDirectory().getPath() + "/resample26_twice.mp4", MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4);
         } catch (IOException e) {
             e.printStackTrace();
         }
