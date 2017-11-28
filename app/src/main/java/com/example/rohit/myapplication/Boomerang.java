@@ -24,7 +24,7 @@ import java.util.HashMap;
 
 public class Boomerang {
 
-    private int WIDTH, HEIGHT;
+    private int WIDTH = -1, HEIGHT = -1;
     private int total_frame_count = 0;
     private static final int OUTPUT_FRAME_RATE = 30;
     private static final int KEY_FRAME_RATE = 10;
@@ -235,6 +235,13 @@ public class Boomerang {
         mEncoder = null;
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
+    private void stopMuxer() {
+        mediaMuxer.stop();
+        mediaMuxer.release();
+        mediaMuxer = null;
+    }
+
 
     @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
     private void encodeVideo() {
@@ -362,17 +369,20 @@ public class Boomerang {
         }
 
         stopEncoder();
+        stopMuxer();
     }
+
+
 
     @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
     private void initializeMuxer() {
         try {
-            mediaMuxer = new MediaMuxer(Environment.getExternalStorageDirectory().getPath() + "/resample22.mp4", MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4);
+            mediaMuxer = new MediaMuxer(Environment.getExternalStorageDirectory().getPath() + "/resample26.mp4", MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4);
         } catch (IOException e) {
             e.printStackTrace();
         }
         VIDEO_TRACK_INDEX = mediaMuxer.addTrack(mEncoder.getOutputFormat());
-        mediaMuxer.setOrientationHint(90);
+        mediaMuxer.setOrientationHint(270);
         mediaMuxer.start();
     }
 
@@ -380,6 +390,9 @@ public class Boomerang {
     private void initializeEncoder() {
         try {
             mEncoder = MediaCodec.createEncoderByType(MIME_TYPE);
+            if (WIDTH == -1 || HEIGHT == -1) {
+                // what to do ?
+            }
             MediaFormat outputMediaFormat = MediaFormat.createVideoFormat(MIME_TYPE, WIDTH, HEIGHT);
             outputMediaFormat.setInteger(MediaFormat.KEY_BIT_RATE, 5000000/*calcBitRate()*/);
             outputMediaFormat.setInteger(MediaFormat.KEY_FRAME_RATE, OUTPUT_FRAME_RATE);
