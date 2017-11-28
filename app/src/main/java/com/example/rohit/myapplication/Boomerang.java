@@ -210,8 +210,6 @@ public class Boomerang {
             } else {
                 info.set(info.offset, info.size, info.presentationTimeUs, 0);
             }
-
-
             frame_count++;
         }
 
@@ -245,11 +243,11 @@ public class Boomerang {
 
         int encoderInputIndex;
         int encoderOutputIndex;
-        ByteBuffer[] encoderOutputBuffers;
         ByteBuffer[] encoderInputBuffers;
+        ByteBuffer[] encoderOutputBuffers;
 
-        encoderOutputBuffers = mEncoder.getOutputBuffers();
         encoderInputBuffers = mEncoder.getInputBuffers();
+        encoderOutputBuffers = mEncoder.getOutputBuffers();
 
         boolean endOfEncoding = false;
         boolean once_done = false;
@@ -344,17 +342,15 @@ public class Boomerang {
                     Log.d("EncodeActivity", "dequeueOutputBuffer timed out!");
                     break;
                 default:
+                    if(mediaMuxer == null) {
+                        initializeMuxer();
+                    }
                     if ((MediaCodec.BUFFER_FLAG_CODEC_CONFIG & encodedBufferInfo.flags) != 0) {
                         mEncoder.releaseOutputBuffer(encoderOutputIndex, false);
                         break;
                     }
                     if ((MediaCodec.BUFFER_FLAG_END_OF_STREAM & encodedBufferInfo.flags) != 0) {
                         endOfEncoding = true;
-                        MediaCodec.BufferInfo temp_info = new MediaCodec.BufferInfo();
-                        temp_info.set(encodedBufferInfo.offset, encodedBufferInfo.size, encodedBufferInfo.presentationTimeUs, encodedBufferInfo.flags);
-                        mediaMuxer.writeSampleData(VIDEO_TRACK_INDEX, encoderOutputBuffers[encoderOutputIndex], temp_info);
-                        mEncoder.releaseOutputBuffer(encoderOutputIndex, false);
-                        break;
                     }
                     if (encodedBufferInfo.size != 0) {
                         MediaCodec.BufferInfo temp_info = new MediaCodec.BufferInfo();
@@ -362,7 +358,6 @@ public class Boomerang {
                         mediaMuxer.writeSampleData(VIDEO_TRACK_INDEX, encoderOutputBuffers[encoderOutputIndex], temp_info);
                         mEncoder.releaseOutputBuffer(encoderOutputIndex, false);
                     }
-                    break;
             }
         }
 
@@ -372,12 +367,12 @@ public class Boomerang {
     @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
     private void initializeMuxer() {
         try {
-            mediaMuxer = new MediaMuxer(Environment.getExternalStorageDirectory().getPath() + "/resample6.mp4", MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4);
+            mediaMuxer = new MediaMuxer(Environment.getExternalStorageDirectory().getPath() + "/resample22.mp4", MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4);
         } catch (IOException e) {
             e.printStackTrace();
         }
         VIDEO_TRACK_INDEX = mediaMuxer.addTrack(mEncoder.getOutputFormat());
-        mediaMuxer.setOrientationHint(270);
+        mediaMuxer.setOrientationHint(90);
         mediaMuxer.start();
     }
 

@@ -15,7 +15,7 @@ public class Main4Activity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main4);
-        filepath = Environment.getExternalStorageDirectory().getPath() + "/sample21.mp4";
+        filepath = Environment.getExternalStorageDirectory().getPath() + "/sample22.mp4";
         Boomerang boomerang = new Boomerang(filepath);
         boomerang.start();
 
