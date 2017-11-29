@@ -13,7 +13,6 @@ import android.util.Log;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.AbstractSequentialList;
 import java.util.ArrayList;
 import java.util.HashMap;
 
@@ -26,8 +25,8 @@ public class Boomerang {
 
     private int WIDTH = -1, HEIGHT = -1;
     private int total_frame_count = 0;
-    private static final int OUTPUT_FRAME_RATE = 30;
-    private static final int KEY_FRAME_RATE = 10;
+    private static final int OUTPUT_FRAME_RATE = 24;
+    private static final int KEY_FRAME_RATE = 5;
     private MediaFormat inputMediaFormat;
     private MediaExtractor mediaExtractor;
     private MediaCodec mDecoder;
@@ -107,10 +106,11 @@ public class Boomerang {
 
                     if (sampleData < 0) {
                         inputExtracted = true;
-                        mDecoder.queueInputBuffer(decoderInputIndex, 0, 0, VIDEO_DURATION + 50000, MediaCodec.BUFFER_FLAG_END_OF_STREAM);
+                        mDecoder.queueInputBuffer(decoderInputIndex, 0, 0, VIDEO_DURATION + 10000, MediaCodec.BUFFER_FLAG_END_OF_STREAM);
                     } else {
                         int flag = mediaExtractor.getSampleFlags();
-                        Log.d("FLAGGGG",""+mediaExtractor.getSampleTrackIndex()+" "+flag);
+                        //Log.d("FLAGGGG",""+mediaExtractor.getSampleTrackIndex()+" "+flag);
+                        Log.d("FLAGGGG",""+mediaExtractor.getSampleTime());
                         mDecoder.queueInputBuffer(decoderInputIndex, 0, sampleData, mediaExtractor.getSampleTime(), flag);
                         mediaExtractor.advance();
                     }
@@ -410,7 +410,7 @@ public class Boomerang {
     @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
     private void initializeMuxer() {
         try {
-            mediaMuxer = new MediaMuxer(Environment.getExternalStorageDirectory().getPath() + "/resample28_thrice.mp4", MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4);
+            mediaMuxer = new MediaMuxer(Environment.getExternalStorageDirectory().getPath() + "/resample30_thrice1.mp4", MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4);
         } catch (IOException e) {
             e.printStackTrace();
         }
