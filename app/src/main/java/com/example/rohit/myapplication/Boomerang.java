@@ -93,6 +93,7 @@ public class Boomerang {
         ByteBuffer[] decoderOutputBuffers = mDecoder.getOutputBuffers();
         MediaCodec.BufferInfo decodedBufferInfo = new MediaCodec.BufferInfo();
 
+        long timestamp = 0;
 
         while (!endOfDecoding) {
             if (!inputExtracted) {
@@ -102,18 +103,22 @@ public class Boomerang {
                     inputBuffer = decoderInputBuffers[decoderInputIndex];
                     inputBuffer.clear();
                     int sampleData = mediaExtractor.readSampleData(inputBuffer, 0);
-                    timeStamp.put(total_frame_count, mediaExtractor.getSampleTime());
+
 
                     if (sampleData < 0) {
                         inputExtracted = true;
-                        mDecoder.queueInputBuffer(decoderInputIndex, 0, 0, VIDEO_DURATION + 10000, MediaCodec.BUFFER_FLAG_END_OF_STREAM);
+                        mDecoder.queueInputBuffer(decoderInputIndex, 0, 0, timestamp, MediaCodec.BUFFER_FLAG_END_OF_STREAM);
                     } else {
                         int flag = mediaExtractor.getSampleFlags();
                         //Log.d("FLAGGGG",""+mediaExtractor.getSampleTrackIndex()+" "+flag);
                         Log.d("FLAGGGG",""+mediaExtractor.getSampleTime());
-                        mDecoder.queueInputBuffer(decoderInputIndex, 0, sampleData, mediaExtractor.getSampleTime(), flag);
+                        mDecoder.queueInputBuffer(decoderInputIndex, 0, sampleData, timestamp, flag);
                         mediaExtractor.advance();
                     }
+
+                    timeStamp.put(total_frame_count, timestamp);
+
+                    timestamp = timestamp + 60000;
                 }
             }
 
